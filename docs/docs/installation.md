@@ -4,30 +4,65 @@ sidebar_position: 2
 
 # Installation
 
-The quickest way to run Loopira — and the closest to how it runs in
-production — is with Docker Compose.
+Loopira ships as a single container image plus Postgres — there's nothing to
+build. Create a `docker-compose.yml`:
 
-```sh
-docker compose up --build
+```yaml
+name: loopira
+
+services:
+  app:
+    image: ghcr.io/deranjer/loopira:latest
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/loopira?sslmode=disable
+      ADDR: ":8080"
+      ADMIN_EMAIL: you@example.com
+      ADMIN_PASSWORD: change-me
+    volumes:
+      - attachments:/data/attachments
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: loopira
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  attachments:
 ```
 
-This builds the frontend, embeds it into the Go binary, builds the app
-image, and starts both containers (`app` and `db`). Database migrations run
-automatically on boot — there's no separate migration step for a fresh
-deployment.
+Then:
 
-Once it's up:
+```sh
+docker compose up -d
+```
+
+Database migrations run automatically on boot — there's no separate
+migration step. Once it's up:
 
 - **App**: [http://localhost:8080](http://localhost:8080)
 - **Health check**: [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health)
-- **Postgres**: exposed on host port `5433` (mapped from the container's
-  `5432`, to avoid clashing with any Postgres you may already have running
-  locally on `5432`)
 
 Data persists in two named Docker volumes: `db_data` (Postgres) and
 `attachments` (uploaded files).
 
-On first boot, Loopira seeds an initial team and an admin user — see
-[Configuration](./configuration.md) for how to control the admin email and
-password, and [Deployment](./deployment.md) for running the published image
-instead of building locally.
+`ADMIN_EMAIL`/`ADMIN_PASSWORD` seed the initial admin user on first boot —
+see [Configuration](./configuration.md) for the full list of environment
+variables and what happens if you leave `ADMIN_PASSWORD` unset. For pinning
+to a specific version instead of `latest`, see [Deployment](./deployment.md).

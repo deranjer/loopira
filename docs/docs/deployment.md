@@ -41,13 +41,6 @@ variables.
 
 ## Using it with Docker Compose
 
-Swap the local `build: .` for the published image in your compose override:
-
-```yaml
-services:
-  app:
-    image: ghcr.io/deranjer/loopira:latest # instead of `build: .`
-```
-
-Pin to a specific tag (e.g. `v1.2.3`) rather than `latest` for reproducible
-production deployments.
+See [Installation](./installation.md) for a full `docker-compose.yml` using
+the published image. For reproducible production deployments, pin the
+`app` service to a specific version tag (e.g. `1.2.3`) instead of `latest`.
