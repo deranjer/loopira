@@ -9,6 +9,11 @@ WHERE p.team_id = $1
 GROUP BY p.id
 ORDER BY p.created_at;
 
+-- name: CreateProject :one
+INSERT INTO projects (team_id, name, description, status)
+VALUES ($1, $2, $3, 'planned')
+RETURNING *;
+
 -- name: GetProject :one
 SELECT
     p.*,

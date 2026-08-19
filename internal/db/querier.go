@@ -11,10 +11,15 @@ import (
 )
 
 type Querier interface {
+	AddIssueLabel(ctx context.Context, arg AddIssueLabelParams) error
 	AddTeamMember(ctx context.Context, arg AddTeamMemberParams) error
+	ClearIssueLabels(ctx context.Context, issueID pgtype.UUID) error
 	CountUsers(ctx context.Context) (int64, error)
 	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (ApiKey, error)
+	CreateCycle(ctx context.Context, arg CreateCycleParams) (Cycle, error)
 	CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue, error)
+	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
+	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)

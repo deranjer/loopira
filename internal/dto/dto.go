@@ -57,6 +57,7 @@ func progressPct(done, total int32) int {
 }
 
 type IssueLabel struct {
+	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Color string `json:"color"`
 }
@@ -95,7 +96,7 @@ func IssueFromListRow(r db.ListIssuesRow) Issue {
 		UpdatedAt:    ts(r.UpdatedAt).Format(TimeFormat),
 	}
 	if r.LabelName != "" {
-		i.Label = &IssueLabel{Name: r.LabelName, Color: r.LabelColor}
+		i.Label = &IssueLabel{ID: uid(r.LabelID), Name: r.LabelName, Color: r.LabelColor}
 	}
 	return i
 }
@@ -117,7 +118,7 @@ func IssueFromGetRow(r db.GetIssueRow) Issue {
 		UpdatedAt:    ts(r.UpdatedAt).Format(TimeFormat),
 	}
 	if r.LabelName != "" {
-		i.Label = &IssueLabel{Name: r.LabelName, Color: r.LabelColor}
+		i.Label = &IssueLabel{ID: uid(r.LabelID), Name: r.LabelName, Color: r.LabelColor}
 	}
 	return i
 }
@@ -137,6 +138,19 @@ func ProjectFromRow(p db.ListProjectsRow) Project {
 		Description: nullableText(p.Description),
 		Status:      p.Status,
 		Progress:    progressPct(p.DoneCount, p.IssueCount),
+	}
+}
+
+// ProjectFromNew builds a Project from a freshly-created row (no issues
+// attached yet, so no join/progress data — matches db.Project, the plain
+// table row CreateProject returns).
+func ProjectFromNew(p db.Project) Project {
+	return Project{
+		ID:          uid(p.ID),
+		Name:        p.Name,
+		Description: nullableText(p.Description),
+		Status:      p.Status,
+		Progress:    0,
 	}
 }
 
@@ -162,6 +176,33 @@ func CycleFromRow(c db.ListCyclesRow) Cycle {
 		Total:     c.IssueCount,
 		Progress:  progressPct(c.DoneCount, c.IssueCount),
 	}
+}
+
+// CycleFromNew builds a Cycle from a freshly-created row (no issues
+// attached yet — matches db.Cycle, the plain table row CreateCycle
+// returns).
+func CycleFromNew(c db.Cycle) Cycle {
+	today := time.Now()
+	return Cycle{
+		ID:        uid(c.ID),
+		Number:    c.Number,
+		StartDate: nullableDate(c.StartDate),
+		EndDate:   nullableDate(c.EndDate),
+		Active:    !c.StartDate.Time.After(today) && !c.EndDate.Time.Before(today),
+		Done:      0,
+		Total:     0,
+		Progress:  0,
+	}
+}
+
+type Label struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+func LabelFromRow(l db.Label) Label {
+	return Label{ID: uid(l.ID), Name: l.Name, Color: l.Color}
 }
 
 type User struct {

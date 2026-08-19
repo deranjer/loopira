@@ -1,9 +1,22 @@
-import { Button, Group, Modal, Select, Stack, Textarea, TextInput } from '@mantine/core'
+import { Button, ColorSwatch, Group, Modal, Select, Stack, Textarea, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
-import { useCreateIssue, useProjects, useUsers } from '../lib/api/hooks'
+import { useCreateIssue, useLabels, useProjects, useUsers } from '../lib/api/hooks'
 import { PRIORITY_META } from '../theme'
 
 const PRIORITY_OPTIONS = PRIORITY_META.map((p, i) => ({ value: String(i), label: p.label }))
+
+function labelSelectProps(labels: { id: string; name: string; color: string }[] | undefined) {
+  const colorById = new Map((labels ?? []).map((l) => [l.id, l.color]))
+  return {
+    data: (labels ?? []).map((l) => ({ value: l.id, label: l.name })),
+    renderOption: ({ option }: { option: { value: string; label: string } }) => (
+      <Group gap="xs" wrap="nowrap">
+        <ColorSwatch color={colorById.get(option.value) ?? '#8a8f98'} size={12} />
+        {option.label}
+      </Group>
+    ),
+  }
+}
 
 export function NewIssueModal({
   opened,
@@ -16,10 +29,11 @@ export function NewIssueModal({
 }) {
   const { data: users } = useUsers()
   const { data: projects } = useProjects(teamId)
+  const { data: labels } = useLabels(teamId)
   const createIssue = useCreateIssue()
 
   const form = useForm({
-    initialValues: { title: '', description: '', priority: '0', assigneeId: '', projectId: '' },
+    initialValues: { title: '', description: '', priority: '0', assigneeId: '', projectId: '', labelId: '' },
   })
 
   function submit(values: typeof form.values) {
@@ -31,6 +45,7 @@ export function NewIssueModal({
         priority: Number(values.priority),
         assigneeId: values.assigneeId || null,
         projectId: values.projectId || null,
+        labelId: values.labelId || null,
       },
       {
         onSuccess: () => {
@@ -71,6 +86,13 @@ export function NewIssueModal({
               data={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
               clearable
               {...form.getInputProps('projectId')}
+            />
+            <Select
+              label="Label"
+              placeholder="None"
+              clearable
+              {...labelSelectProps(labels)}
+              {...form.getInputProps('labelId')}
             />
           </Group>
           <Group justify="flex-end" mt="sm">

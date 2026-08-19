@@ -40,6 +40,7 @@ type createIssueInput struct {
 		Priority    int16   `json:"priority" minimum:"0" maximum:"4"`
 		AssigneeID  *string `json:"assigneeId,omitempty"`
 		ProjectID   *string `json:"projectId,omitempty"`
+		LabelID     *string `json:"labelId,omitempty"`
 	}
 }
 
@@ -59,6 +60,7 @@ type updateIssueDetailsInput struct {
 		AssigneeID  *string `json:"assigneeId,omitempty"`
 		ProjectID   *string `json:"projectId,omitempty"`
 		CycleID     *string `json:"cycleId,omitempty"`
+		LabelID     *string `json:"labelId,omitempty"`
 	}
 }
 
@@ -67,6 +69,23 @@ func optionalUUID(s *string) (pgtype.UUID, error) {
 		return pgtype.UUID{}, nil
 	}
 	return mustUUID(*s)
+}
+
+// applyIssueLabel replaces an issue's label set with zero or one label —
+// the UI only ever shows a single label per issue even though the schema
+// supports many-to-many via issue_labels.
+func (s *Server) applyIssueLabel(ctx context.Context, issueID pgtype.UUID, labelID *string) error {
+	if err := s.q.ClearIssueLabels(ctx, issueID); err != nil {
+		return err
+	}
+	if labelID == nil || *labelID == "" {
+		return nil
+	}
+	id, err := mustUUID(*labelID)
+	if err != nil {
+		return huma.Error400BadRequest("invalid labelId")
+	}
+	return s.q.AddIssueLabel(ctx, db.AddIssueLabelParams{IssueID: issueID, LabelID: id})
 }
 
 func (s *Server) registerIssueRoutes() {
@@ -170,6 +189,9 @@ func (s *Server) registerIssueRoutes() {
 		if err != nil {
 			return nil, err
 		}
+		if err := s.applyIssueLabel(ctx, created.ID, input.Body.LabelID); err != nil {
+			return nil, err
+		}
 		row, err := s.q.GetIssue(ctx, created.ID)
 		if err != nil {
 			return nil, err
@@ -245,6 +267,9 @@ func (s *Server) registerIssueRoutes() {
 		})
 		if err != nil {
 			return nil, huma.Error404NotFound("issue not found")
+		}
+		if err := s.applyIssueLabel(ctx, updated.ID, input.Body.LabelID); err != nil {
+			return nil, err
 		}
 		row, err := s.q.GetIssue(ctx, updated.ID)
 		if err != nil {

@@ -62,7 +62,7 @@ export interface Issue {
   projectId: string | null
   projectName: string | null
   cycleId: string | null
-  label: { name: string; color: string } | null
+  label: { id: string; name: string; color: string } | null
   createdAt: string
   updatedAt: string
 }

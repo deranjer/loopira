@@ -11,6 +11,54 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addIssueLabel = `-- name: AddIssueLabel :exec
+INSERT INTO issue_labels (issue_id, label_id) VALUES ($1, $2)
+ON CONFLICT DO NOTHING
+`
+
+type AddIssueLabelParams struct {
+	IssueID pgtype.UUID `json:"issue_id"`
+	LabelID pgtype.UUID `json:"label_id"`
+}
+
+func (q *Queries) AddIssueLabel(ctx context.Context, arg AddIssueLabelParams) error {
+	_, err := q.db.Exec(ctx, addIssueLabel, arg.IssueID, arg.LabelID)
+	return err
+}
+
+const clearIssueLabels = `-- name: ClearIssueLabels :exec
+DELETE FROM issue_labels WHERE issue_id = $1
+`
+
+func (q *Queries) ClearIssueLabels(ctx context.Context, issueID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearIssueLabels, issueID)
+	return err
+}
+
+const createLabel = `-- name: CreateLabel :one
+INSERT INTO labels (team_id, name, color)
+VALUES ($1, $2, $3)
+RETURNING id, team_id, name, color
+`
+
+type CreateLabelParams struct {
+	TeamID pgtype.UUID `json:"team_id"`
+	Name   string      `json:"name"`
+	Color  string      `json:"color"`
+}
+
+func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error) {
+	row := q.db.QueryRow(ctx, createLabel, arg.TeamID, arg.Name, arg.Color)
+	var i Label
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.Name,
+		&i.Color,
+	)
+	return i, err
+}
+
 const listLabels = `-- name: ListLabels :many
 SELECT id, team_id, name, color FROM labels
 WHERE team_id = $1 OR team_id IS NULL

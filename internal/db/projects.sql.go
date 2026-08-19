@@ -11,6 +11,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createProject = `-- name: CreateProject :one
+INSERT INTO projects (team_id, name, description, status)
+VALUES ($1, $2, $3, 'planned')
+RETURNING id, team_id, name, description, status, created_at
+`
+
+type CreateProjectParams struct {
+	TeamID      pgtype.UUID `json:"team_id"`
+	Name        string      `json:"name"`
+	Description pgtype.Text `json:"description"`
+}
+
+func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error) {
+	row := q.db.QueryRow(ctx, createProject, arg.TeamID, arg.Name, arg.Description)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.Name,
+		&i.Description,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getProject = `-- name: GetProject :one
 SELECT
     p.id, p.team_id, p.name, p.description, p.status, p.created_at,

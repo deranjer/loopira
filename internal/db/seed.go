@@ -57,6 +57,20 @@ func EnsureSeedData(ctx context.Context, q *Queries) error {
 		return fmt.Errorf("adding admin to seed team: %w", err)
 	}
 
+	// Default labels — same name/color pairs as the pulled design's own
+	// LABEL_COLORS — so there's something to assign out of the box.
+	defaultLabels := []struct{ name, color string }{
+		{"Bug", "#eb5757"},
+		{"Chore", "#8a8f98"},
+		{"Exploration", "#4fd1c5"},
+		{"Polish", "#5e6ad2"},
+	}
+	for _, l := range defaultLabels {
+		if _, err := q.CreateLabel(ctx, CreateLabelParams{TeamID: team.ID, Name: l.name, Color: l.color}); err != nil {
+			return fmt.Errorf("seeding label %q: %w", l.name, err)
+		}
+	}
+
 	slog.Info("seeded workspace", "team", team.Name, "adminEmail", email)
 	if generated {
 		slog.Warn("generated admin password — save it, it will not be shown again", "password", password)

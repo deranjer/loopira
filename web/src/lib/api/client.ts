@@ -52,10 +52,14 @@ export const labelsApi = {
 
 export const projectsApi = {
   list: (teamId: string) => request<Project[]>(`/projects?teamId=${teamId}`),
+  create: (teamId: string, name: string, description: string) =>
+    request<Project>('/projects', { method: 'POST', body: JSON.stringify({ teamId, name, description }) }),
 }
 
 export const cyclesApi = {
   list: (teamId: string) => request<Cycle[]>(`/cycles?teamId=${teamId}`),
+  create: (teamId: string, startDate: string, endDate: string) =>
+    request<Cycle>('/cycles', { method: 'POST', body: JSON.stringify({ teamId, startDate, endDate }) }),
 }
 
 export interface IssueFilters {
@@ -72,6 +76,7 @@ export interface CreateIssueInput {
   priority: number
   assigneeId?: string | null
   projectId?: string | null
+  labelId?: string | null
 }
 
 export interface UpdateIssueDetailsInput {
@@ -81,6 +86,7 @@ export interface UpdateIssueDetailsInput {
   assigneeId?: string | null
   projectId?: string | null
   cycleId?: string | null
+  labelId?: string | null
 }
 
 export const issuesApi = {

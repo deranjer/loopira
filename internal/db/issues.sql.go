@@ -70,6 +70,7 @@ SELECT
     t.key AS team_key,
     u.name AS assignee_name,
     p.name AS project_name,
+    lbl.id AS label_id,
     COALESCE(lbl.name, '') AS label_name,
     COALESCE(lbl.color, '') AS label_color
 FROM issues i
@@ -77,7 +78,7 @@ JOIN teams t ON t.id = i.team_id
 LEFT JOIN users u ON u.id = i.assignee_id
 LEFT JOIN projects p ON p.id = i.project_id
 LEFT JOIN LATERAL (
-    SELECT l.name, l.color
+    SELECT l.id, l.name, l.color
     FROM issue_labels il
     JOIN labels l ON l.id = il.label_id
     WHERE il.issue_id = i.id
@@ -106,6 +107,7 @@ type GetIssueRow struct {
 	TeamKey      string             `json:"team_key"`
 	AssigneeName pgtype.Text        `json:"assignee_name"`
 	ProjectName  pgtype.Text        `json:"project_name"`
+	LabelID      pgtype.UUID        `json:"label_id"`
 	LabelName    string             `json:"label_name"`
 	LabelColor   string             `json:"label_color"`
 }
@@ -132,6 +134,7 @@ func (q *Queries) GetIssue(ctx context.Context, id pgtype.UUID) (GetIssueRow, er
 		&i.TeamKey,
 		&i.AssigneeName,
 		&i.ProjectName,
+		&i.LabelID,
 		&i.LabelName,
 		&i.LabelColor,
 	)
@@ -144,6 +147,7 @@ SELECT
     t.key AS team_key,
     u.name AS assignee_name,
     p.name AS project_name,
+    lbl.id AS label_id,
     COALESCE(lbl.name, '') AS label_name,
     COALESCE(lbl.color, '') AS label_color
 FROM issues i
@@ -151,7 +155,7 @@ JOIN teams t ON t.id = i.team_id
 LEFT JOIN users u ON u.id = i.assignee_id
 LEFT JOIN projects p ON p.id = i.project_id
 LEFT JOIN LATERAL (
-    SELECT l.name, l.color
+    SELECT l.id, l.name, l.color
     FROM issue_labels il
     JOIN labels l ON l.id = il.label_id
     WHERE il.issue_id = i.id
@@ -185,6 +189,7 @@ type GetIssueByNumberRow struct {
 	TeamKey      string             `json:"team_key"`
 	AssigneeName pgtype.Text        `json:"assignee_name"`
 	ProjectName  pgtype.Text        `json:"project_name"`
+	LabelID      pgtype.UUID        `json:"label_id"`
 	LabelName    string             `json:"label_name"`
 	LabelColor   string             `json:"label_color"`
 }
@@ -211,6 +216,7 @@ func (q *Queries) GetIssueByNumber(ctx context.Context, arg GetIssueByNumberPara
 		&i.TeamKey,
 		&i.AssigneeName,
 		&i.ProjectName,
+		&i.LabelID,
 		&i.LabelName,
 		&i.LabelColor,
 	)
@@ -223,6 +229,7 @@ SELECT
     t.key AS team_key,
     u.name AS assignee_name,
     p.name AS project_name,
+    lbl.id AS label_id,
     COALESCE(lbl.name, '') AS label_name,
     COALESCE(lbl.color, '') AS label_color
 FROM issues i
@@ -230,7 +237,7 @@ JOIN teams t ON t.id = i.team_id
 LEFT JOIN users u ON u.id = i.assignee_id
 LEFT JOIN projects p ON p.id = i.project_id
 LEFT JOIN LATERAL (
-    SELECT l.name, l.color
+    SELECT l.id, l.name, l.color
     FROM issue_labels il
     JOIN labels l ON l.id = il.label_id
     WHERE il.issue_id = i.id
@@ -270,6 +277,7 @@ type ListIssuesRow struct {
 	TeamKey      string             `json:"team_key"`
 	AssigneeName pgtype.Text        `json:"assignee_name"`
 	ProjectName  pgtype.Text        `json:"project_name"`
+	LabelID      pgtype.UUID        `json:"label_id"`
 	LabelName    string             `json:"label_name"`
 	LabelColor   string             `json:"label_color"`
 }
@@ -307,6 +315,7 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListI
 			&i.TeamKey,
 			&i.AssigneeName,
 			&i.ProjectName,
+			&i.LabelID,
 			&i.LabelName,
 			&i.LabelColor,
 		); err != nil {

@@ -4,6 +4,7 @@ SELECT
     t.key AS team_key,
     u.name AS assignee_name,
     p.name AS project_name,
+    lbl.id AS label_id,
     COALESCE(lbl.name, '') AS label_name,
     COALESCE(lbl.color, '') AS label_color
 FROM issues i
@@ -11,7 +12,7 @@ JOIN teams t ON t.id = i.team_id
 LEFT JOIN users u ON u.id = i.assignee_id
 LEFT JOIN projects p ON p.id = i.project_id
 LEFT JOIN LATERAL (
-    SELECT l.name, l.color
+    SELECT l.id, l.name, l.color
     FROM issue_labels il
     JOIN labels l ON l.id = il.label_id
     WHERE il.issue_id = i.id
@@ -30,6 +31,7 @@ SELECT
     t.key AS team_key,
     u.name AS assignee_name,
     p.name AS project_name,
+    lbl.id AS label_id,
     COALESCE(lbl.name, '') AS label_name,
     COALESCE(lbl.color, '') AS label_color
 FROM issues i
@@ -37,7 +39,7 @@ JOIN teams t ON t.id = i.team_id
 LEFT JOIN users u ON u.id = i.assignee_id
 LEFT JOIN projects p ON p.id = i.project_id
 LEFT JOIN LATERAL (
-    SELECT l.name, l.color
+    SELECT l.id, l.name, l.color
     FROM issue_labels il
     JOIN labels l ON l.id = il.label_id
     WHERE il.issue_id = i.id
@@ -52,6 +54,7 @@ SELECT
     t.key AS team_key,
     u.name AS assignee_name,
     p.name AS project_name,
+    lbl.id AS label_id,
     COALESCE(lbl.name, '') AS label_name,
     COALESCE(lbl.color, '') AS label_color
 FROM issues i
@@ -59,7 +62,7 @@ JOIN teams t ON t.id = i.team_id
 LEFT JOIN users u ON u.id = i.assignee_id
 LEFT JOIN projects p ON p.id = i.project_id
 LEFT JOIN LATERAL (
-    SELECT l.name, l.color
+    SELECT l.id, l.name, l.color
     FROM issue_labels il
     JOIN labels l ON l.id = il.label_id
     WHERE il.issue_id = i.id

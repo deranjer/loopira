@@ -120,12 +120,33 @@ func (s *toolServer) getIssue(ctx context.Context, _ *mcp.CallToolRequest, args 
 	return nil, dto.IssueFromGetRow(row), nil
 }
 
+// applyIssueLabel replaces an issue's label set with zero or one label —
+// the UI only ever shows a single label per issue even though the schema
+// supports many-to-many via issue_labels. Mirrors internal/api's own
+// applyIssueLabel; not shared directly since mcpserver can't import
+// api's unexported helpers (and importing internal/api at all would
+// reintroduce the cycle this package's whole existence avoids).
+func (s *toolServer) applyIssueLabel(ctx context.Context, issueID pgtype.UUID, labelID string) error {
+	if err := s.q.ClearIssueLabels(ctx, issueID); err != nil {
+		return err
+	}
+	if labelID == "" {
+		return nil
+	}
+	id, err := parseUUID(labelID)
+	if err != nil {
+		return fmt.Errorf("invalid labelId %q", labelID)
+	}
+	return s.q.AddIssueLabel(ctx, db.AddIssueLabelParams{IssueID: issueID, LabelID: id})
+}
+
 type createIssueArgs struct {
 	Title       string `json:"title" jsonschema:"issue title"`
 	Description string `json:"description,omitempty" jsonschema:"issue description"`
 	Priority    int    `json:"priority,omitempty" jsonschema:"priority level 0 to 4: 0 none (default) 1 urgent 2 high 3 medium 4 low"`
 	AssigneeID  string `json:"assigneeId,omitempty" jsonschema:"assignee user id, from list_users"`
 	ProjectID   string `json:"projectId,omitempty" jsonschema:"project id, from list_projects"`
+	LabelID     string `json:"labelId,omitempty" jsonschema:"label id, from list_labels"`
 }
 
 func (s *toolServer) createIssue(ctx context.Context, _ *mcp.CallToolRequest, args createIssueArgs) (*mcp.CallToolResult, dto.Issue, error) {
@@ -166,6 +187,9 @@ func (s *toolServer) createIssue(ctx context.Context, _ *mcp.CallToolRequest, ar
 	})
 	if err != nil {
 		return nil, dto.Issue{}, err
+	}
+	if err := s.applyIssueLabel(ctx, created.ID, args.LabelID); err != nil {
+		return errorResult("%s", err), dto.Issue{}, nil
 	}
 	return s.broadcastAndReturn(ctx, created.ID, team.ID, "issue.created")
 }
@@ -209,6 +233,7 @@ type updateIssueArgs struct {
 	AssigneeID  *string `json:"assigneeId,omitempty" jsonschema:"new assignee user id; empty string clears it"`
 	ProjectID   *string `json:"projectId,omitempty" jsonschema:"new project id; empty string clears it"`
 	CycleID     *string `json:"cycleId,omitempty" jsonschema:"new cycle id; empty string clears it"`
+	LabelID     *string `json:"labelId,omitempty" jsonschema:"new label id from list_labels; empty string clears it; omit to leave unchanged"`
 }
 
 func (s *toolServer) updateIssue(ctx context.Context, _ *mcp.CallToolRequest, args updateIssueArgs) (*mcp.CallToolResult, dto.Issue, error) {
@@ -253,6 +278,11 @@ func (s *toolServer) updateIssue(ctx context.Context, _ *mcp.CallToolRequest, ar
 	})
 	if err != nil {
 		return nil, dto.Issue{}, err
+	}
+	if args.LabelID != nil {
+		if err := s.applyIssueLabel(ctx, updated.ID, *args.LabelID); err != nil {
+			return errorResult("%s", err), dto.Issue{}, nil
+		}
 	}
 	return s.broadcastAndReturn(ctx, updated.ID, team.ID, "issue.updated")
 }
@@ -307,6 +337,22 @@ func (s *toolServer) listCycles(ctx context.Context, _ *mcp.CallToolRequest, _ s
 	out := make([]dto.Cycle, len(rows))
 	for i, r := range rows {
 		out[i] = dto.CycleFromRow(r)
+	}
+	return nil, out, nil
+}
+
+func (s *toolServer) listLabels(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, []dto.Label, error) {
+	team, err := s.currentTeam(ctx)
+	if err != nil {
+		return errorResult("%s", err), nil, nil
+	}
+	rows, err := s.q.ListLabels(ctx, team.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := make([]dto.Label, len(rows))
+	for i, r := range rows {
+		out[i] = dto.LabelFromRow(r)
 	}
 	return nil, out, nil
 }

@@ -46,12 +46,12 @@ func nullableTimestamp(t pgtype.Timestamptz) *string {
 	return &s
 }
 
-func nullableDate(d pgtype.Date) *string {
-	if !d.Valid {
-		return nil
+func mustDate(s string) (pgtype.Date, error) {
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return pgtype.Date{}, err
 	}
-	s := d.Time.Format("2006-01-02")
-	return &s
+	return pgtype.Date{Time: t, Valid: true}, nil
 }
 
 func mustUUID(s string) (pgtype.UUID, error) {

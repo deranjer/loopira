@@ -1,19 +1,28 @@
-import { Progress, Text } from '@mantine/core'
+import { useState } from 'react'
+import { Button, Progress, Text } from '@mantine/core'
+import { IconPlus } from '@tabler/icons-react'
 import { useOutletContext } from 'react-router-dom'
 import type { Team } from '../lib/api/types'
 import { useProjects } from '../lib/api/hooks'
 import { avatarColor } from '../theme'
+import { NewProjectModal } from '../components/NewProjectModal'
 
 export function ProjectsView() {
   const { team } = useOutletContext<{ team: Team | undefined }>()
   const { data: projects } = useProjects(team?.id)
+  const [newProjectOpen, setNewProjectOpen] = useState(false)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ height: 60, minHeight: 60, display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: '1px solid #1d1e21' }}>
+      <div style={{ height: 60, minHeight: 60, display: 'flex', alignItems: 'center', gap: 12, padding: '0 20px', borderBottom: '1px solid #1d1e21' }}>
         <Text fw={600} size="md" c="dark.0">
           Projects
         </Text>
+        <div style={{ marginLeft: 'auto' }}>
+          <Button size="sm" leftSection={<IconPlus size={15} />} onClick={() => setNewProjectOpen(true)}>
+            New project
+          </Button>
+        </div>
       </div>
       <div
         style={{
@@ -51,6 +60,8 @@ export function ProjectsView() {
           </Text>
         )}
       </div>
+
+      {team && <NewProjectModal opened={newProjectOpen} onClose={() => setNewProjectOpen(false)} teamId={team.id} />}
     </div>
   )
 }

@@ -3,8 +3,8 @@
 // (see internal/api/router.go), authenticated the same way as every other
 // route — a session cookie or, more relevantly here, a Bearer API key
 // (see internal/auth). Tool handlers reuse the same sqlc queries and
-// response-shaping (internal/api's exported *Body types and *FromRow
-// functions) as the REST API, so the two surfaces never drift apart.
+// response-shaping (internal/dto's types and *FromRow functions) as the
+// REST API, so the two surfaces never drift apart.
 package mcpserver
 
 import (
@@ -66,6 +66,11 @@ func New(q *db.Queries, hub *ws.Hub) *mcp.Server {
 		Name:        "list_users",
 		Description: "List workspace members — use this to resolve a name to an assignee id before calling create_issue/update_issue.",
 	}, s.listUsers)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "list_labels",
+		Description: "List labels in the workspace — use this to resolve a label name to an id before calling create_issue/update_issue.",
+	}, s.listLabels)
 
 	return server
 }

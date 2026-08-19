@@ -11,6 +11,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createCycle = `-- name: CreateCycle :one
+INSERT INTO cycles (team_id, number, start_date, end_date)
+SELECT $1, COALESCE(MAX(number), 0) + 1, $2, $3
+FROM cycles WHERE team_id = $1
+RETURNING id, team_id, number, start_date, end_date
+`
+
+type CreateCycleParams struct {
+	TeamID    pgtype.UUID `json:"team_id"`
+	StartDate pgtype.Date `json:"start_date"`
+	EndDate   pgtype.Date `json:"end_date"`
+}
+
+func (q *Queries) CreateCycle(ctx context.Context, arg CreateCycleParams) (Cycle, error) {
+	row := q.db.QueryRow(ctx, createCycle, arg.TeamID, arg.StartDate, arg.EndDate)
+	var i Cycle
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.Number,
+		&i.StartDate,
+		&i.EndDate,
+	)
+	return i, err
+}
+
 const listCycles = `-- name: ListCycles :many
 SELECT
     c.id, c.team_id, c.number, c.start_date, c.end_date,

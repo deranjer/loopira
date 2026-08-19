@@ -83,6 +83,24 @@ export function useCycles(teamId: string | undefined) {
   })
 }
 
+export function useCreateProject() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ teamId, name, description }: { teamId: string; name: string; description: string }) =>
+      projectsApi.create(teamId, name, description),
+    onSuccess: (_data, { teamId }) => qc.invalidateQueries({ queryKey: ['projects', teamId] }),
+  })
+}
+
+export function useCreateCycle() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ teamId, startDate, endDate }: { teamId: string; startDate: string; endDate: string }) =>
+      cyclesApi.create(teamId, startDate, endDate),
+    onSuccess: (_data, { teamId }) => qc.invalidateQueries({ queryKey: ['cycles', teamId] }),
+  })
+}
+
 export function useIssues(filters: IssueFilters | undefined) {
   return useQuery({
     queryKey: ['issues', filters],

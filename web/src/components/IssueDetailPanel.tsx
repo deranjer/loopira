@@ -1,11 +1,31 @@
 import { useEffect } from 'react'
-import { Avatar, Drawer, Select, Stack, Text, Textarea, TextInput } from '@mantine/core'
+import { Avatar, ColorSwatch, Drawer, Group, Select, Stack, Text, Textarea, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
-import { useIssue, useProjects, useUpdateIssueDetails, useUpdateIssueStatus, useUsers } from '../lib/api/hooks'
+import {
+  useIssue,
+  useLabels,
+  useProjects,
+  useUpdateIssueDetails,
+  useUpdateIssueStatus,
+  useUsers,
+} from '../lib/api/hooks'
 import { PRIORITY_META, STATUS_META, STATUS_ORDER, avatarColor } from '../theme'
 
 const STATUS_OPTIONS = STATUS_ORDER.map((s) => ({ value: s, label: STATUS_META[s].label }))
 const PRIORITY_OPTIONS = PRIORITY_META.map((p, i) => ({ value: String(i), label: p.label }))
+
+function labelSelectProps(labels: { id: string; name: string; color: string }[] | undefined) {
+  const colorById = new Map((labels ?? []).map((l) => [l.id, l.color]))
+  return {
+    data: (labels ?? []).map((l) => ({ value: l.id, label: l.name })),
+    renderOption: ({ option }: { option: { value: string; label: string } }) => (
+      <Group gap="xs" wrap="nowrap">
+        <ColorSwatch color={colorById.get(option.value) ?? '#8a8f98'} size={12} />
+        {option.label}
+      </Group>
+    ),
+  }
+}
 
 export function IssueDetailPanel({
   issueId,
@@ -19,6 +39,7 @@ export function IssueDetailPanel({
   const { data: issue } = useIssue(issueId ?? undefined)
   const { data: users } = useUsers()
   const { data: projects } = useProjects(teamId)
+  const { data: labels } = useLabels(teamId)
   const updateStatus = useUpdateIssueStatus()
   const updateDetails = useUpdateIssueDetails()
 
@@ -29,6 +50,7 @@ export function IssueDetailPanel({
       priority: '0',
       assigneeId: '',
       projectId: '',
+      labelId: '',
     },
   })
 
@@ -40,6 +62,7 @@ export function IssueDetailPanel({
         priority: String(issue.priority),
         assigneeId: issue.assigneeId ?? '',
         projectId: issue.projectId ?? '',
+        labelId: issue.label?.id ?? '',
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -62,6 +85,7 @@ export function IssueDetailPanel({
         assigneeId: form.values.assigneeId || null,
         projectId: form.values.projectId || null,
         cycleId: issue!.cycleId,
+        labelId: form.values.labelId || null,
       },
     })
   }
@@ -116,6 +140,7 @@ export function IssueDetailPanel({
                   assigneeId: issue.assigneeId,
                   projectId: issue.projectId,
                   cycleId: issue.cycleId,
+                  labelId: form.values.labelId || null,
                 },
               })
             }}
@@ -141,6 +166,7 @@ export function IssueDetailPanel({
                   assigneeId: v,
                   projectId: issue.projectId,
                   cycleId: issue.cycleId,
+                  labelId: form.values.labelId || null,
                 },
               })
             }}
@@ -161,6 +187,28 @@ export function IssueDetailPanel({
                   assigneeId: issue.assigneeId,
                   projectId: v,
                   cycleId: issue.cycleId,
+                  labelId: form.values.labelId || null,
+                },
+              })
+            }}
+          />
+          <Select
+            label="Label"
+            value={form.values.labelId || null}
+            clearable
+            {...labelSelectProps(labels)}
+            onChange={(v) => {
+              form.setFieldValue('labelId', v ?? '')
+              updateDetails.mutate({
+                id: issue.id,
+                input: {
+                  title: issue.title,
+                  description: issue.description,
+                  priority: issue.priority,
+                  assigneeId: issue.assigneeId,
+                  projectId: issue.projectId,
+                  cycleId: issue.cycleId,
+                  labelId: v,
                 },
               })
             }}
