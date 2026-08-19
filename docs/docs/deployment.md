@@ -13,9 +13,12 @@ ghcr.io/deranjer/loopira
 
 ## Tags
 
+Releases are cut by pushing a git tag like `vX.Y.Z`; the published image tags
+drop the `v` prefix:
+
 | Tag | Meaning |
 | --- | --- |
-| `vX.Y.Z` | An exact release, e.g. `v1.2.3`. |
+| `X.Y.Z` | An exact release, e.g. `1.2.3` (from git tag `v1.2.3`). |
 | `X.Y` | Latest patch release within that minor version. |
 | `X` | Latest release within that major version. |
 | `latest` | Latest tagged release. |
