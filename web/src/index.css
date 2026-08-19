@@ -1,0 +1,19 @@
+@import '@mantine/core/styles.css';
+@import '@mantine/spotlight/styles.css';
+
+body {
+  margin: 0;
+  color-scheme: dark;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2b2f;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -1,0 +1,4 @@
+.git
+web/node_modules
+internal/webapp/dist
+*.exe
