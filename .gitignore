@@ -8,6 +8,11 @@ web/node_modules/
 internal/webapp/dist/*
 !internal/webapp/dist/index.html
 
+# Docs
+docs/node_modules/
+docs/build/
+docs/.docusaurus/
+
 # Env / local
 .env
 *.local
