@@ -12,10 +12,12 @@ import (
 
 type Querier interface {
 	AddIssueLabel(ctx context.Context, arg AddIssueLabelParams) error
+	AddProjectMember(ctx context.Context, arg AddProjectMemberParams) error
 	AddTeamMember(ctx context.Context, arg AddTeamMemberParams) error
 	ClearIssueLabels(ctx context.Context, issueID pgtype.UUID) error
 	CountUsers(ctx context.Context) (int64, error)
 	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (ApiKey, error)
+	CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error)
 	CreateCycle(ctx context.Context, arg CreateCycleParams) (Cycle, error)
 	CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue, error)
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
@@ -23,9 +25,13 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateView(ctx context.Context, arg CreateViewParams) (View, error)
 	DeleteAPIKey(ctx context.Context, arg DeleteAPIKeyParams) (int64, error)
+	DeleteAttachment(ctx context.Context, id pgtype.UUID) error
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
+	DeleteView(ctx context.Context, arg DeleteViewParams) error
 	GetAPIKeyByHash(ctx context.Context, keyHash string) (GetAPIKeyByHashRow, error)
+	GetAttachment(ctx context.Context, id pgtype.UUID) (Attachment, error)
 	GetIssue(ctx context.Context, id pgtype.UUID) (GetIssueRow, error)
 	GetIssueByNumber(ctx context.Context, arg GetIssueByNumberParams) (GetIssueByNumberRow, error)
 	GetProject(ctx context.Context, id pgtype.UUID) (GetProjectRow, error)
@@ -37,13 +43,19 @@ type Querier interface {
 	ListCycles(ctx context.Context, teamID pgtype.UUID) ([]ListCyclesRow, error)
 	ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListIssuesRow, error)
 	ListLabels(ctx context.Context, teamID pgtype.UUID) ([]Label, error)
+	ListProjectAttachments(ctx context.Context, projectID pgtype.UUID) ([]ListProjectAttachmentsRow, error)
+	ListProjectMembers(ctx context.Context, projectID pgtype.UUID) ([]User, error)
 	ListProjects(ctx context.Context, teamID pgtype.UUID) ([]ListProjectsRow, error)
 	ListTeams(ctx context.Context) ([]Team, error)
 	ListUsers(ctx context.Context) ([]User, error)
+	ListViews(ctx context.Context, ownerID pgtype.UUID) ([]View, error)
+	RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error
 	UpdateAPIKeyLastUsed(ctx context.Context, id pgtype.UUID) error
 	UpdateIssueDetails(ctx context.Context, arg UpdateIssueDetailsParams) (Issue, error)
 	UpdateIssueStatus(ctx context.Context, arg UpdateIssueStatusParams) (Issue, error)
+	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateTeamName(ctx context.Context, arg UpdateTeamNameParams) (Team, error)
+	UpdateView(ctx context.Context, arg UpdateViewParams) (View, error)
 }
 
 var _ Querier = (*Queries)(nil)

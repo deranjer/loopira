@@ -8,6 +8,8 @@ import {
   IconRepeat,
   IconSearch,
   IconSettings,
+  IconStack2,
+  IconUser,
 } from '@tabler/icons-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useCurrentTeam, useLogout, useMe } from '../lib/api/hooks'
@@ -17,9 +19,11 @@ import { CommandPalette } from './CommandPalette'
 
 const NAV_ITEMS = [
   { to: '/issues', label: 'Issues', icon: IconListDetails },
+  { to: '/my-issues', label: 'My Issues', icon: IconUser },
   { to: '/board', label: 'Board', icon: IconLayoutKanban },
   { to: '/cycles', label: 'Cycles', icon: IconRepeat },
   { to: '/projects', label: 'Projects', icon: IconFolder },
+  { to: '/views', label: 'Views', icon: IconStack2 },
   { to: '/settings', label: 'Settings', icon: IconSettings },
 ]
 

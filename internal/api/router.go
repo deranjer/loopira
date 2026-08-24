@@ -17,6 +17,7 @@ import (
 	"github.com/deranjer/loopira/internal/auth"
 	"github.com/deranjer/loopira/internal/db"
 	"github.com/deranjer/loopira/internal/mcpserver"
+	"github.com/deranjer/loopira/internal/storage"
 	"github.com/deranjer/loopira/internal/ws"
 )
 
@@ -26,9 +27,10 @@ type Server struct {
 	mgr     *auth.Manager
 	hub     *ws.Hub
 	humaAPI huma.API
+	store   storage.Store
 }
 
-func New(pool *pgxpool.Pool, hub *ws.Hub) *Server {
+func New(pool *pgxpool.Pool, hub *ws.Hub, store storage.Store) *Server {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
@@ -45,6 +47,7 @@ func New(pool *pgxpool.Pool, hub *ws.Hub) *Server {
 		mgr:     auth.NewManager(q),
 		hub:     hub,
 		humaAPI: humaAPI,
+		store:   store,
 	}
 
 	huma.Register(humaAPI, huma.Operation{
@@ -66,12 +69,16 @@ func New(pool *pgxpool.Pool, hub *ws.Hub) *Server {
 	s.registerTeamRoutes()
 	s.registerLabelRoutes()
 	s.registerProjectRoutes()
+	s.registerProjectMemberRoutes()
+	s.registerAttachmentRoutes()
 	s.registerCycleRoutes()
 	s.registerIssueRoutes()
 	s.registerAPIKeyRoutes()
+	s.registerViewRoutes()
 
 	r.With(auth.RequireAuth(s.mgr)).Handle("/ws", hub)
 	s.registerMCPRoute(r)
+	s.registerDocumentUploadRoute(r)
 
 	return s
 }

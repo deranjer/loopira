@@ -16,6 +16,7 @@ import (
 	"github.com/deranjer/loopira/internal/api"
 	"github.com/deranjer/loopira/internal/db"
 	"github.com/deranjer/loopira/internal/jobs"
+	"github.com/deranjer/loopira/internal/storage"
 	"github.com/deranjer/loopira/internal/webapp"
 	"github.com/deranjer/loopira/internal/ws"
 )
@@ -64,7 +65,12 @@ func run() error {
 	})
 	scheduler.Start(ctx)
 
-	srv := api.New(pool, hub)
+	store, err := storage.NewDisk(getenv("ATTACHMENTS_DIR", "./data/attachments"))
+	if err != nil {
+		return err
+	}
+
+	srv := api.New(pool, hub, store)
 
 	frontend, err := webapp.Handler()
 	if err != nil {

@@ -73,6 +73,27 @@ export const STATUS_META = {
 export type IssueStatus = keyof typeof STATUS_META
 export const STATUS_ORDER: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'done', 'canceled']
 
+// Projects have their own status enum (internal/db/migrations/00003_project_fields.sql),
+// distinct from issue status — same dot-badge visual language, different values.
+export const PROJECT_STATUS_META = {
+  backlog: { label: 'Backlog', color: '#5a5d63' },
+  planned: { label: 'Planned', color: '#8a8f98' },
+  in_progress: { label: 'In Progress', color: '#f2c94c' },
+  paused: { label: 'Paused', color: '#eb5757' },
+  completed: { label: 'Completed', color: '#5e6ad2' },
+  canceled: { label: 'Canceled', color: '#5a5d63' },
+} as const
+
+export type ProjectStatusKey = keyof typeof PROJECT_STATUS_META
+export const PROJECT_STATUS_ORDER: ProjectStatusKey[] = [
+  'backlog',
+  'planned',
+  'in_progress',
+  'paused',
+  'completed',
+  'canceled',
+]
+
 // Indexed by the DB's `priority` smallint (0=none,1=urgent,2=high,3=medium,
 // 4=low, per internal/db/migrations/00001_init.sql). `bars` is how many of
 // the 4 priority bars render filled — urgent is most-filled, matching the

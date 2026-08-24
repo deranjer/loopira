@@ -14,6 +14,15 @@ CREATE TABLE users (
     created_at    timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE sessions (
+    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    expires_at timestamptz NOT NULL
+);
+
+CREATE INDEX idx_sessions_user ON sessions (user_id);
+
 CREATE TABLE teams (
     id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name       text NOT NULL,
@@ -33,8 +42,17 @@ CREATE TABLE projects (
     team_id     uuid NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     name        text NOT NULL,
     description text,
-    status      text NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'in_progress', 'paused', 'completed', 'canceled')),
+    status      text NOT NULL DEFAULT 'backlog' CHECK (status IN ('backlog', 'planned', 'in_progress', 'paused', 'completed', 'canceled')),
+    lead_id     uuid REFERENCES users(id) ON DELETE SET NULL,
+    target_date date,
+    priority    smallint NOT NULL DEFAULT 0 CHECK (priority BETWEEN 0 AND 4),
     created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE project_members (
+    project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (project_id, user_id)
 );
 
 CREATE TABLE milestones (
@@ -180,13 +198,14 @@ CREATE TABLE attachments (
     id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     issue_id     uuid REFERENCES issues(id) ON DELETE CASCADE,
     comment_id   uuid REFERENCES comments(id) ON DELETE CASCADE,
+    project_id   uuid REFERENCES projects(id) ON DELETE CASCADE,
     filename     text NOT NULL,
     content_type text NOT NULL,
     size_bytes   bigint NOT NULL,
     storage_key  text NOT NULL,
     uploaded_by  uuid NOT NULL REFERENCES users(id),
     created_at   timestamptz NOT NULL DEFAULT now(),
-    CHECK (issue_id IS NOT NULL OR comment_id IS NOT NULL)
+    CHECK (issue_id IS NOT NULL OR comment_id IS NOT NULL OR project_id IS NOT NULL)
 );
 
 -- +goose Down
@@ -205,7 +224,9 @@ DROP TABLE IF EXISTS issues;
 DROP TABLE IF EXISTS labels;
 DROP TABLE IF EXISTS cycles;
 DROP TABLE IF EXISTS milestones;
+DROP TABLE IF EXISTS project_members;
 DROP TABLE IF EXISTS projects;
 DROP TABLE IF EXISTS team_members;
 DROP TABLE IF EXISTS teams;
+DROP TABLE IF EXISTS sessions;
 DROP TABLE IF EXISTS users;

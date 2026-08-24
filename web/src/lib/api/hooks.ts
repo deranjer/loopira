@@ -4,15 +4,19 @@ import {
   authApi,
   type CreateIssueInput,
   cyclesApi,
+  documentsApi,
   type IssueFilters,
   issuesApi,
   labelsApi,
+  projectMembersApi,
   projectsApi,
   teamsApi,
   type UpdateIssueDetailsInput,
+  type UpdateProjectInput,
   usersApi,
+  viewsApi,
 } from './client'
-import type { Issue } from './types'
+import type { Issue, ViewDefinition } from './types'
 
 export function useMe() {
   return useQuery({ queryKey: ['me'], queryFn: authApi.me, retry: false })
@@ -83,12 +87,35 @@ export function useCycles(teamId: string | undefined) {
   })
 }
 
+export function useProject(id: string | undefined) {
+  return useQuery({
+    queryKey: ['project', id],
+    queryFn: () => projectsApi.get(id!),
+    enabled: !!id,
+  })
+}
+
 export function useCreateProject() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ teamId, name, description }: { teamId: string; name: string; description: string }) =>
       projectsApi.create(teamId, name, description),
     onSuccess: (_data, { teamId }) => qc.invalidateQueries({ queryKey: ['projects', teamId] }),
+  })
+}
+
+export function useUpdateProject() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateProjectInput }) => projectsApi.update(id, input),
+    onSuccess: (project) => {
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.setQueryData(['project', project.id], project)
+      // A lead change may have upserted a project_members row server-side
+      // (internal/api/projects.go's update-project handler) — refresh so
+      // the Members list picks it up without a manual reload.
+      if (project.leadId) qc.invalidateQueries({ queryKey: ['projectMembers', project.id] })
+    },
   })
 }
 
@@ -168,6 +195,95 @@ export function useDeleteApiKey() {
   return useMutation({
     mutationFn: (id: string) => apiKeysApi.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['apiKeys'] }),
+  })
+}
+
+export function useProjectMembers(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['projectMembers', projectId],
+    queryFn: () => projectMembersApi.list(projectId!),
+    enabled: !!projectId,
+  })
+}
+
+export function useAddProjectMember() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, userId }: { projectId: string; userId: string }) =>
+      projectMembersApi.add(projectId, userId),
+    onSuccess: (_data, { projectId }) => qc.invalidateQueries({ queryKey: ['projectMembers', projectId] }),
+  })
+}
+
+export function useRemoveProjectMember() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, userId }: { projectId: string; userId: string }) =>
+      projectMembersApi.remove(projectId, userId),
+    onSuccess: (_data, { projectId }) => qc.invalidateQueries({ queryKey: ['projectMembers', projectId] }),
+  })
+}
+
+export function useProjectDocuments(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['projectDocuments', projectId],
+    queryFn: () => documentsApi.list(projectId!),
+    enabled: !!projectId,
+  })
+}
+
+export function useUploadDocument() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, file }: { projectId: string; file: File }) => documentsApi.upload(projectId, file),
+    onSuccess: (_data, { projectId }) => qc.invalidateQueries({ queryKey: ['projectDocuments', projectId] }),
+  })
+}
+
+export function useDeleteDocument() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ attachmentId }: { attachmentId: string; projectId: string }) => documentsApi.delete(attachmentId),
+    onSuccess: (_data, { projectId }) => qc.invalidateQueries({ queryKey: ['projectDocuments', projectId] }),
+  })
+}
+
+export function useViews() {
+  return useQuery({ queryKey: ['views'], queryFn: viewsApi.list })
+}
+
+export function useCreateView() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, definition, shared }: { name: string; definition: ViewDefinition; shared: boolean }) =>
+      viewsApi.create(name, definition, shared),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['views'] }),
+  })
+}
+
+export function useUpdateView() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      name,
+      definition,
+      shared,
+    }: {
+      id: string
+      name: string
+      definition: ViewDefinition
+      shared: boolean
+    }) => viewsApi.update(id, name, definition, shared),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['views'] }),
+  })
+}
+
+export function useDeleteView() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => viewsApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['views'] }),
   })
 }
 

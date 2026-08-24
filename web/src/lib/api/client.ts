@@ -1,4 +1,4 @@
-import type { ApiKey, Cycle, Issue, Label, NewApiKey, Project, Team, User } from './types'
+import type { ApiKey, Attachment, Cycle, Issue, Label, NewApiKey, Project, Team, User, View, ViewDefinition } from './types'
 
 export class ApiError extends Error {
   status: number
@@ -50,10 +50,52 @@ export const labelsApi = {
   list: (teamId: string) => request<Label[]>(`/labels?teamId=${teamId}`),
 }
 
+export interface UpdateProjectInput {
+  name: string
+  description: string
+  status: string
+  priority: number
+  leadId?: string | null
+  targetDate?: string | null
+}
+
 export const projectsApi = {
   list: (teamId: string) => request<Project[]>(`/projects?teamId=${teamId}`),
+  get: (id: string) => request<Project>(`/projects/${id}`),
   create: (teamId: string, name: string, description: string) =>
     request<Project>('/projects', { method: 'POST', body: JSON.stringify({ teamId, name, description }) }),
+  update: (id: string, input: UpdateProjectInput) =>
+    request<Project>(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+}
+
+export const projectMembersApi = {
+  list: (projectId: string) => request<User[]>(`/projects/${projectId}/members`),
+  add: (projectId: string, userId: string) =>
+    request<User[]>(`/projects/${projectId}/members`, { method: 'POST', body: JSON.stringify({ userId }) }),
+  remove: (projectId: string, userId: string) =>
+    request<{ status: string }>(`/projects/${projectId}/members/${userId}`, { method: 'DELETE' }),
+}
+
+export const documentsApi = {
+  list: (projectId: string) => request<Attachment[]>(`/projects/${projectId}/documents`),
+  upload: async (projectId: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    // Raw fetch, not the JSON-only request() helper — the backend's
+    // upload route is a multipart chi handler, not a huma JSON operation.
+    const res = await fetch(`/api/v1/projects/${projectId}/documents`, {
+      method: 'POST',
+      credentials: 'include',
+      body: form,
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new ApiError(res.status, body.detail || `upload failed: ${res.status}`)
+    }
+    return res.json() as Promise<Attachment>
+  },
+  delete: (attachmentId: string) => request<{ status: string }>(`/attachments/${attachmentId}`, { method: 'DELETE' }),
+  downloadUrl: (attachmentId: string) => `/api/v1/attachments/${attachmentId}/download`,
 }
 
 export const cyclesApi = {
@@ -67,6 +109,9 @@ export interface IssueFilters {
   status?: string
   projectId?: string
   cycleId?: string
+  assigneeId?: string
+  priority?: number
+  labelId?: string
 }
 
 export interface CreateIssueInput {
@@ -89,12 +134,24 @@ export interface UpdateIssueDetailsInput {
   labelId?: string | null
 }
 
+export const viewsApi = {
+  list: () => request<View[]>('/views'),
+  create: (name: string, definition: ViewDefinition, shared: boolean) =>
+    request<View>('/views', { method: 'POST', body: JSON.stringify({ name, definition, shared }) }),
+  update: (id: string, name: string, definition: ViewDefinition, shared: boolean) =>
+    request<View>(`/views/${id}`, { method: 'PATCH', body: JSON.stringify({ name, definition, shared }) }),
+  delete: (id: string) => request<{ status: string }>(`/views/${id}`, { method: 'DELETE' }),
+}
+
 export const issuesApi = {
   list: (filters: IssueFilters) => {
     const params = new URLSearchParams({ teamId: filters.teamId })
     if (filters.status) params.set('status', filters.status)
     if (filters.projectId) params.set('projectId', filters.projectId)
     if (filters.cycleId) params.set('cycleId', filters.cycleId)
+    if (filters.assigneeId) params.set('assigneeId', filters.assigneeId)
+    if (filters.priority !== undefined) params.set('priority', String(filters.priority))
+    if (filters.labelId) params.set('labelId', filters.labelId)
     return request<Issue[]>(`/issues?${params.toString()}`)
   },
   get: (id: string) => request<Issue>(`/issues/${id}`),

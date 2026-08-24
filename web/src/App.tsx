@@ -4,9 +4,12 @@ import { useMe } from './lib/api/hooks'
 import { AppShell } from './components/AppShell'
 import { Login } from './pages/Login'
 import { IssuesView } from './pages/IssuesView'
+import { MyIssuesView } from './pages/MyIssuesView'
 import { BoardView } from './pages/BoardView'
 import { CyclesView } from './pages/CyclesView'
 import { ProjectsView } from './pages/ProjectsView'
+import { ProjectDetailView } from './pages/ProjectDetailView'
+import { ViewsView } from './pages/ViewsView'
 import { SettingsView } from './pages/SettingsView'
 
 function RequireAuth() {
@@ -33,9 +36,12 @@ function App() {
         <Route element={<AppShell />}>
           <Route index element={<Navigate to="/issues" replace />} />
           <Route path="/issues" element={<IssuesView />} />
+          <Route path="/my-issues" element={<MyIssuesView />} />
           <Route path="/board" element={<BoardView />} />
           <Route path="/cycles" element={<CyclesView />} />
           <Route path="/projects" element={<ProjectsView />} />
+          <Route path="/projects/:id" element={<ProjectDetailView />} />
+          <Route path="/views" element={<ViewsView />} />
           <Route path="/settings" element={<SettingsView />} />
         </Route>
       </Route>

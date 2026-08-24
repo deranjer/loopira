@@ -23,6 +23,12 @@ WHERE i.team_id = $1
   AND (sqlc.narg(status)::text IS NULL OR i.status = sqlc.narg(status))
   AND (sqlc.narg(project_id)::uuid IS NULL OR i.project_id = sqlc.narg(project_id))
   AND (sqlc.narg(cycle_id)::uuid IS NULL OR i.cycle_id = sqlc.narg(cycle_id))
+  AND (sqlc.narg(assignee_id)::uuid IS NULL OR i.assignee_id = sqlc.narg(assignee_id))
+  AND (sqlc.narg(priority)::smallint IS NULL OR i.priority = sqlc.narg(priority))
+  AND (
+    sqlc.narg(label_id)::uuid IS NULL
+    OR EXISTS (SELECT 1 FROM issue_labels il2 WHERE il2.issue_id = i.id AND il2.label_id = sqlc.narg(label_id))
+  )
 ORDER BY i.created_at DESC;
 
 -- name: GetIssue :one
