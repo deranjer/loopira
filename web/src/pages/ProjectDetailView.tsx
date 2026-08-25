@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ActionIcon, Button, Select, Text, Textarea, TextInput } from '@mantine/core'
+import { ActionIcon, Button, Select, Tabs, Text, Textarea, TextInput } from '@mantine/core'
 import { IconArrowLeft, IconPlus } from '@tabler/icons-react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import type { Team } from '../lib/api/types'
@@ -9,6 +9,7 @@ import { IssueDetailPanel } from '../components/IssueDetailPanel'
 import { NewIssueModal } from '../components/NewIssueModal'
 import { MembersSection } from '../components/MembersSection'
 import { DocumentsSection } from '../components/DocumentsSection'
+import { WorkLogSection } from '../components/WorkLogSection'
 import { PRIORITY_META, PROJECT_STATUS_META, PROJECT_STATUS_ORDER } from '../theme'
 
 export function ProjectDetailView() {
@@ -90,16 +91,27 @@ export function ProjectDetailView() {
             />
           </div>
 
-          <div>
-            {(issues ?? []).map((issue) => (
-              <IssueRow key={issue.id} issue={issue} onClick={() => setSelectedIssueId(issue.id)} />
-            ))}
-            {issues?.length === 0 && (
-              <Text size="sm" c="dark.4" p="lg">
-                No issues in this project yet.
-              </Text>
-            )}
-          </div>
+          <Tabs defaultValue="issues" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <Tabs.List px={12}>
+              <Tabs.Tab value="issues">Issues</Tabs.Tab>
+              <Tabs.Tab value="worklog">Work Log</Tabs.Tab>
+            </Tabs.List>
+
+            <Tabs.Panel value="issues" style={{ flex: 1, overflowY: 'auto' }}>
+              {(issues ?? []).map((issue) => (
+                <IssueRow key={issue.id} issue={issue} onClick={() => setSelectedIssueId(issue.id)} />
+              ))}
+              {issues?.length === 0 && (
+                <Text size="sm" c="dark.4" p="lg">
+                  No issues in this project yet.
+                </Text>
+              )}
+            </Tabs.Panel>
+
+            <Tabs.Panel value="worklog" style={{ flex: 1, overflowY: 'auto' }}>
+              <WorkLogSection projectId={project.id} />
+            </Tabs.Panel>
+          </Tabs>
         </div>
 
         <div style={{ flex: 1, minWidth: 280, maxWidth: 340, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>

@@ -72,5 +72,16 @@ func New(q *db.Queries, hub *ws.Hub) *mcp.Server {
 		Description: "List labels in the workspace — use this to resolve a label name to an id before calling create_issue/update_issue.",
 	}, s.listLabels)
 
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "add_work_log",
+		Description: "Add a work log entry to a project's changelog — use this after finishing a session or " +
+			"feature to record what was done and why. Entries are permanent: there is no edit or delete. Requires a read-write API key.",
+	}, s.addWorkLog)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "list_work_log",
+		Description: "List recent work log entries, optionally filtered by project or search text. Useful for catching up on a project's history before adding a new entry.",
+	}, s.listWorkLog)
+
 	return server
 }

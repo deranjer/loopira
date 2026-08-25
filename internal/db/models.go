@@ -22,13 +22,13 @@ type Attachment struct {
 	ID          pgtype.UUID        `json:"id"`
 	IssueID     pgtype.UUID        `json:"issue_id"`
 	CommentID   pgtype.UUID        `json:"comment_id"`
+	ProjectID   pgtype.UUID        `json:"project_id"`
 	Filename    string             `json:"filename"`
 	ContentType string             `json:"content_type"`
 	SizeBytes   int64              `json:"size_bytes"`
 	StorageKey  string             `json:"storage_key"`
 	UploadedBy  pgtype.UUID        `json:"uploaded_by"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	ProjectID   pgtype.UUID        `json:"project_id"`
 }
 
 type Comment struct {
@@ -123,10 +123,10 @@ type Project struct {
 	Name        string             `json:"name"`
 	Description pgtype.Text        `json:"description"`
 	Status      string             `json:"status"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	LeadID      pgtype.UUID        `json:"lead_id"`
 	TargetDate  pgtype.Date        `json:"target_date"`
 	Priority    int16              `json:"priority"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type ProjectMember struct {
@@ -192,4 +192,14 @@ type WebhookDelivery struct {
 	Attempts      int32              `json:"attempts"`
 	NextAttemptAt pgtype.Timestamptz `json:"next_attempt_at"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+type WorkLog struct {
+	ID        pgtype.UUID        `json:"id"`
+	ProjectID pgtype.UUID        `json:"project_id"`
+	AuthorID  pgtype.UUID        `json:"author_id"`
+	Source    string             `json:"source"`
+	Title     string             `json:"title"`
+	Body      string             `json:"body"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }

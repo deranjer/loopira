@@ -208,7 +208,22 @@ CREATE TABLE attachments (
     CHECK (issue_id IS NOT NULL OR comment_id IS NOT NULL OR project_id IS NOT NULL)
 );
 
+CREATE TABLE work_logs (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id  uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    author_id   uuid NOT NULL REFERENCES users(id),
+    source      text NOT NULL DEFAULT 'human' CHECK (source IN ('human', 'agent')),
+    title       text NOT NULL,
+    body        text NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_work_logs_project ON work_logs (project_id, created_at DESC);
+CREATE INDEX idx_work_logs_author ON work_logs (author_id);
+CREATE INDEX idx_work_logs_search ON work_logs USING GIN (to_tsvector('english', title || ' ' || body));
+
 -- +goose Down
+DROP TABLE IF EXISTS work_logs;
 DROP TABLE IF EXISTS attachments;
 DROP TABLE IF EXISTS git_links;
 DROP TABLE IF EXISTS webhook_deliveries;

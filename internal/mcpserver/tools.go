@@ -392,3 +392,86 @@ func (s *toolServer) listUsers(ctx context.Context, _ *mcp.CallToolRequest, _ st
 	}
 	return nil, out, nil
 }
+
+type addWorkLogArgs struct {
+	ProjectID string `json:"projectId" jsonschema:"project id, from list_projects"`
+	Title     string `json:"title" jsonschema:"short title for the work log entry"`
+	Body      string `json:"body" jsonschema:"markdown body describing what was done and why"`
+}
+
+// addWorkLog always tags the entry source as "agent" — this tool only
+// exists on the MCP surface, so every call through it is by definition
+// agent-initiated, regardless of whether the calling API key also has a
+// human owner. Compare the REST create-work-log handler, which derives
+// source from auth.ViaAPIKey since a human can call it directly.
+func (s *toolServer) addWorkLog(ctx context.Context, _ *mcp.CallToolRequest, args addWorkLogArgs) (*mcp.CallToolResult, dto.WorkLog, error) {
+	if !auth.CanWrite(ctx) {
+		return errNoWrite, dto.WorkLog{}, nil
+	}
+	if strings.TrimSpace(args.Title) == "" {
+		return errorResult("title is required"), dto.WorkLog{}, nil
+	}
+	if strings.TrimSpace(args.Body) == "" {
+		return errorResult("body is required"), dto.WorkLog{}, nil
+	}
+	projectID, err := parseUUID(args.ProjectID)
+	if err != nil {
+		return errorResult("invalid projectId %q", args.ProjectID), dto.WorkLog{}, nil
+	}
+	project, err := s.q.GetProject(ctx, projectID)
+	if err != nil {
+		return errorResult("project %q not found", args.ProjectID), dto.WorkLog{}, nil
+	}
+	userIDStr, _ := auth.UserID(ctx)
+	authorID, err := parseUUID(userIDStr)
+	if err != nil {
+		return errorResult("could not resolve caller"), dto.WorkLog{}, nil
+	}
+	created, err := s.q.CreateWorkLog(ctx, db.CreateWorkLogParams{
+		ProjectID: projectID,
+		AuthorID:  authorID,
+		Source:    "agent",
+		Title:     args.Title,
+		Body:      args.Body,
+	})
+	if err != nil {
+		return nil, dto.WorkLog{}, err
+	}
+	row, err := s.q.GetWorkLog(ctx, created.ID)
+	if err != nil {
+		return nil, dto.WorkLog{}, err
+	}
+	body := dto.WorkLogFromGetRow(row)
+	s.hub.Broadcast(ws.Event{Type: "worklog.created", TeamID: project.TeamID.String(), Payload: body})
+	return nil, body, nil
+}
+
+const listWorkLogLimit = 50
+
+type listWorkLogArgs struct {
+	ProjectID string `json:"projectId,omitempty" jsonschema:"filter by project id, from list_projects; omit to see recent entries across all projects"`
+	Search    string `json:"search,omitempty" jsonschema:"free-text search over title and body"`
+}
+
+func (s *toolServer) listWorkLog(ctx context.Context, _ *mcp.CallToolRequest, args listWorkLogArgs) (*mcp.CallToolResult, []dto.WorkLog, error) {
+	params := db.ListWorkLogsParams{LimitCount: listWorkLogLimit}
+	if args.ProjectID != "" {
+		id, err := parseUUID(args.ProjectID)
+		if err != nil {
+			return errorResult("invalid projectId %q", args.ProjectID), nil, nil
+		}
+		params.ProjectID = id
+	}
+	if args.Search != "" {
+		params.Search = pgtype.Text{String: args.Search, Valid: true}
+	}
+	rows, err := s.q.ListWorkLogs(ctx, params)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := make([]dto.WorkLog, len(rows))
+	for i, r := range rows {
+		out[i] = dto.WorkLogFromGlobalRow(r)
+	}
+	return nil, out, nil
+}

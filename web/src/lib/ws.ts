@@ -28,6 +28,9 @@ export function useTeamLiveUpdates(teamId: string | undefined) {
       }
       if (msg.type.startsWith('issue.')) {
         qc.invalidateQueries({ queryKey: ['issues'] })
+      } else if (msg.type.startsWith('worklog.')) {
+        qc.invalidateQueries({ queryKey: ['projectWorkLogs'] })
+        qc.invalidateQueries({ queryKey: ['workLogs'] })
       }
     }
 

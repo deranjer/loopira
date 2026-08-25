@@ -3,6 +3,7 @@ import {
   IconFolder,
   IconLayoutKanban,
   IconListDetails,
+  IconNotes,
   IconRepeat,
   IconSearch,
   IconSettings,
@@ -22,6 +23,7 @@ export function CommandPalette({ teamId }: { teamId: string | undefined }) {
     { id: 'nav-board', label: 'Go to Board', leftSection: <IconLayoutKanban size={18} />, onClick: () => navigate('/board') },
     { id: 'nav-cycles', label: 'Go to Cycles', leftSection: <IconRepeat size={18} />, onClick: () => navigate('/cycles') },
     { id: 'nav-projects', label: 'Go to Projects', leftSection: <IconFolder size={18} />, onClick: () => navigate('/projects') },
+    { id: 'nav-worklog', label: 'Go to Work Log', leftSection: <IconNotes size={18} />, onClick: () => navigate('/worklog') },
     { id: 'nav-views', label: 'Go to Views', leftSection: <IconStack2 size={18} />, onClick: () => navigate('/views') },
     { id: 'nav-settings', label: 'Go to Settings', leftSection: <IconSettings size={18} />, onClick: () => navigate('/settings') },
   ]

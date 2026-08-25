@@ -14,7 +14,7 @@ import (
 const createAttachment = `-- name: CreateAttachment :one
 INSERT INTO attachments (project_id, filename, content_type, size_bytes, storage_key, uploaded_by)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, issue_id, comment_id, filename, content_type, size_bytes, storage_key, uploaded_by, created_at, project_id
+RETURNING id, issue_id, comment_id, project_id, filename, content_type, size_bytes, storage_key, uploaded_by, created_at
 `
 
 type CreateAttachmentParams struct {
@@ -40,13 +40,13 @@ func (q *Queries) CreateAttachment(ctx context.Context, arg CreateAttachmentPara
 		&i.ID,
 		&i.IssueID,
 		&i.CommentID,
+		&i.ProjectID,
 		&i.Filename,
 		&i.ContentType,
 		&i.SizeBytes,
 		&i.StorageKey,
 		&i.UploadedBy,
 		&i.CreatedAt,
-		&i.ProjectID,
 	)
 	return i, err
 }
@@ -61,7 +61,7 @@ func (q *Queries) DeleteAttachment(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getAttachment = `-- name: GetAttachment :one
-SELECT id, issue_id, comment_id, filename, content_type, size_bytes, storage_key, uploaded_by, created_at, project_id FROM attachments WHERE id = $1
+SELECT id, issue_id, comment_id, project_id, filename, content_type, size_bytes, storage_key, uploaded_by, created_at FROM attachments WHERE id = $1
 `
 
 func (q *Queries) GetAttachment(ctx context.Context, id pgtype.UUID) (Attachment, error) {
@@ -71,19 +71,19 @@ func (q *Queries) GetAttachment(ctx context.Context, id pgtype.UUID) (Attachment
 		&i.ID,
 		&i.IssueID,
 		&i.CommentID,
+		&i.ProjectID,
 		&i.Filename,
 		&i.ContentType,
 		&i.SizeBytes,
 		&i.StorageKey,
 		&i.UploadedBy,
 		&i.CreatedAt,
-		&i.ProjectID,
 	)
 	return i, err
 }
 
 const listProjectAttachments = `-- name: ListProjectAttachments :many
-SELECT a.id, a.issue_id, a.comment_id, a.filename, a.content_type, a.size_bytes, a.storage_key, a.uploaded_by, a.created_at, a.project_id, u.name AS uploaded_by_name
+SELECT a.id, a.issue_id, a.comment_id, a.project_id, a.filename, a.content_type, a.size_bytes, a.storage_key, a.uploaded_by, a.created_at, u.name AS uploaded_by_name
 FROM attachments a
 JOIN users u ON u.id = a.uploaded_by
 WHERE a.project_id = $1
@@ -94,13 +94,13 @@ type ListProjectAttachmentsRow struct {
 	ID             pgtype.UUID        `json:"id"`
 	IssueID        pgtype.UUID        `json:"issue_id"`
 	CommentID      pgtype.UUID        `json:"comment_id"`
+	ProjectID      pgtype.UUID        `json:"project_id"`
 	Filename       string             `json:"filename"`
 	ContentType    string             `json:"content_type"`
 	SizeBytes      int64              `json:"size_bytes"`
 	StorageKey     string             `json:"storage_key"`
 	UploadedBy     pgtype.UUID        `json:"uploaded_by"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	ProjectID      pgtype.UUID        `json:"project_id"`
 	UploadedByName string             `json:"uploaded_by_name"`
 }
 
@@ -117,13 +117,13 @@ func (q *Queries) ListProjectAttachments(ctx context.Context, projectID pgtype.U
 			&i.ID,
 			&i.IssueID,
 			&i.CommentID,
+			&i.ProjectID,
 			&i.Filename,
 			&i.ContentType,
 			&i.SizeBytes,
 			&i.StorageKey,
 			&i.UploadedBy,
 			&i.CreatedAt,
-			&i.ProjectID,
 			&i.UploadedByName,
 		); err != nil {
 			return nil, err

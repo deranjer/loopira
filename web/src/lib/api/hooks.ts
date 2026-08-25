@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   apiKeysApi,
   authApi,
   type CreateIssueInput,
+  type CreateWorkLogInput,
   cyclesApi,
   documentsApi,
   type IssueFilters,
@@ -15,6 +16,8 @@ import {
   type UpdateProjectInput,
   usersApi,
   viewsApi,
+  type WorkLogFilters,
+  workLogsApi,
 } from './client'
 import type { Issue, ViewDefinition } from './types'
 
@@ -284,6 +287,34 @@ export function useDeleteView() {
   return useMutation({
     mutationFn: (id: string) => viewsApi.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['views'] }),
+  })
+}
+
+export function useProjectWorkLogs(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['projectWorkLogs', projectId],
+    queryFn: () => workLogsApi.listForProject(projectId!),
+    enabled: !!projectId,
+  })
+}
+
+export function useWorkLogs(filters: WorkLogFilters) {
+  return useQuery({
+    queryKey: ['workLogs', filters],
+    queryFn: () => workLogsApi.list(filters),
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useCreateWorkLog() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, input }: { projectId: string; input: CreateWorkLogInput }) =>
+      workLogsApi.create(projectId, input),
+    onSuccess: (_data, { projectId }) => {
+      qc.invalidateQueries({ queryKey: ['projectWorkLogs', projectId] })
+      qc.invalidateQueries({ queryKey: ['workLogs'] })
+    },
   })
 }
 
