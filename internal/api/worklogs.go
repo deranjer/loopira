@@ -48,7 +48,7 @@ type listWorkLogsInput struct {
 type listWorkLogsOutput struct {
 	Body struct {
 		Items []dto.WorkLog `json:"items"`
-		Total int32          `json:"total"`
+		Total int32         `json:"total"`
 	}
 }
 
