@@ -3,6 +3,9 @@
 *.test
 /server
 
+# Release tooling
+/node_modules/
+
 # Frontend
 web/node_modules/
 internal/webapp/dist/*
