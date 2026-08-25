@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -14,10 +15,13 @@ import (
 )
 
 type listIssuesInput struct {
-	TeamID    string `query:"teamId" required:"true"`
-	Status    string `query:"status"`
-	ProjectID string `query:"projectId"`
-	CycleID   string `query:"cycleId"`
+	TeamID     string `query:"teamId" required:"true"`
+	Status     string `query:"status"`
+	ProjectID  string `query:"projectId"`
+	CycleID    string `query:"cycleId"`
+	AssigneeID string `query:"assigneeId"`
+	Priority   string `query:"priority"`
+	LabelID    string `query:"labelId"`
 }
 
 type listIssuesOutput struct {
@@ -109,6 +113,14 @@ func (s *Server) registerIssueRoutes() {
 		if err != nil {
 			return nil, huma.Error400BadRequest("invalid cycleId")
 		}
+		assigneeID, err := optionalUUID(strPtr(input.AssigneeID))
+		if err != nil {
+			return nil, huma.Error400BadRequest("invalid assigneeId")
+		}
+		labelID, err := optionalUUID(strPtr(input.LabelID))
+		if err != nil {
+			return nil, huma.Error400BadRequest("invalid labelId")
+		}
 		params := db.ListIssuesParams{TeamID: teamID}
 		if input.Status != "" {
 			params.Status = pgtype.Text{String: input.Status, Valid: true}
@@ -118,6 +130,19 @@ func (s *Server) registerIssueRoutes() {
 		}
 		if cycleID.Valid {
 			params.CycleID = cycleID
+		}
+		if assigneeID.Valid {
+			params.AssigneeID = assigneeID
+		}
+		if labelID.Valid {
+			params.LabelID = labelID
+		}
+		if input.Priority != "" {
+			p, err := strconv.ParseInt(input.Priority, 10, 16)
+			if err != nil {
+				return nil, huma.Error400BadRequest("invalid priority")
+			}
+			params.Priority = pgtype.Int2{Int16: int16(p), Valid: true}
 		}
 		rows, err := s.q.ListIssues(ctx, params)
 		if err != nil {

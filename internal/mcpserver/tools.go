@@ -65,9 +65,12 @@ func (s *toolServer) resolveIssue(ctx context.Context, teamID pgtype.UUID, ref s
 }
 
 type listIssuesArgs struct {
-	Status    string `json:"status,omitempty" jsonschema:"filter by status: backlog, todo, in_progress, done, or canceled"`
-	ProjectID string `json:"projectId,omitempty" jsonschema:"filter by project id, from list_projects"`
-	CycleID   string `json:"cycleId,omitempty" jsonschema:"filter by cycle id, from list_cycles"`
+	Status     string `json:"status,omitempty" jsonschema:"filter by status: backlog, todo, in_progress, done, or canceled"`
+	ProjectID  string `json:"projectId,omitempty" jsonschema:"filter by project id, from list_projects"`
+	CycleID    string `json:"cycleId,omitempty" jsonschema:"filter by cycle id, from list_cycles"`
+	AssigneeID string `json:"assigneeId,omitempty" jsonschema:"filter by assignee id, from list_users, or 'me' for the current user"`
+	Priority   *int16 `json:"priority,omitempty" jsonschema:"filter by priority: 0=none,1=urgent,2=high,3=medium,4=low"`
+	LabelID    string `json:"labelId,omitempty" jsonschema:"filter by label id, from list_labels"`
 }
 
 func (s *toolServer) listIssues(ctx context.Context, _ *mcp.CallToolRequest, args listIssuesArgs) (*mcp.CallToolResult, []dto.Issue, error) {
@@ -92,6 +95,27 @@ func (s *toolServer) listIssues(ctx context.Context, _ *mcp.CallToolRequest, arg
 			return errorResult("invalid cycleId %q", args.CycleID), nil, nil
 		}
 		params.CycleID = id
+	}
+	if args.AssigneeID != "" {
+		ref := args.AssigneeID
+		if ref == "me" {
+			ref, _ = auth.UserID(ctx)
+		}
+		id, err := parseUUID(ref)
+		if err != nil {
+			return errorResult("invalid assigneeId %q", args.AssigneeID), nil, nil
+		}
+		params.AssigneeID = id
+	}
+	if args.LabelID != "" {
+		id, err := parseUUID(args.LabelID)
+		if err != nil {
+			return errorResult("invalid labelId %q", args.LabelID), nil, nil
+		}
+		params.LabelID = id
+	}
+	if args.Priority != nil {
+		params.Priority = pgtype.Int2{Int16: *args.Priority, Valid: true}
 	}
 	rows, err := s.q.ListIssues(ctx, params)
 	if err != nil {

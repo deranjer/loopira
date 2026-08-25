@@ -8,6 +8,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -128,6 +129,11 @@ type Project struct {
 	Name        string  `json:"name"`
 	Description *string `json:"description"`
 	Status      string  `json:"status"`
+	Priority    int16   `json:"priority"`
+	LeadID      *string `json:"leadId"`
+	LeadName    *string `json:"leadName"`
+	TargetDate  *string `json:"targetDate"`
+	IssueCount  int     `json:"issueCount"`
 	Progress    int     `json:"progress"` // 0-100, percent of issues done
 }
 
@@ -137,20 +143,27 @@ func ProjectFromRow(p db.ListProjectsRow) Project {
 		Name:        p.Name,
 		Description: nullableText(p.Description),
 		Status:      p.Status,
+		Priority:    p.Priority,
+		LeadID:      nullableUID(p.LeadID),
+		LeadName:    nullableText(p.LeadName),
+		TargetDate:  nullableDate(p.TargetDate),
+		IssueCount:  int(p.IssueCount),
 		Progress:    progressPct(p.DoneCount, p.IssueCount),
 	}
 }
 
-// ProjectFromNew builds a Project from a freshly-created row (no issues
-// attached yet, so no join/progress data — matches db.Project, the plain
-// table row CreateProject returns).
-func ProjectFromNew(p db.Project) Project {
+func ProjectFromGetRow(p db.GetProjectRow) Project {
 	return Project{
 		ID:          uid(p.ID),
 		Name:        p.Name,
 		Description: nullableText(p.Description),
 		Status:      p.Status,
-		Progress:    0,
+		Priority:    p.Priority,
+		LeadID:      nullableUID(p.LeadID),
+		LeadName:    nullableText(p.LeadName),
+		TargetDate:  nullableDate(p.TargetDate),
+		IssueCount:  int(p.IssueCount),
+		Progress:    progressPct(p.DoneCount, p.IssueCount),
 	}
 }
 
@@ -214,4 +227,46 @@ type User struct {
 
 func UserFromRow(u db.User) User {
 	return User{ID: uid(u.ID), Name: u.Name, Email: u.Email, Role: u.Role}
+}
+
+type Attachment struct {
+	ID             string `json:"id"`
+	Filename       string `json:"filename"`
+	ContentType    string `json:"contentType"`
+	SizeBytes      int64  `json:"sizeBytes"`
+	UploadedBy     string `json:"uploadedBy"`
+	UploadedByName string `json:"uploadedByName"`
+	CreatedAt      string `json:"createdAt"`
+}
+
+type View struct {
+	ID         string          `json:"id"`
+	OwnerID    string          `json:"ownerId"`
+	Name       string          `json:"name"`
+	Definition json.RawMessage `json:"definition"`
+	Shared     bool            `json:"shared"`
+	CreatedAt  string          `json:"createdAt"`
+}
+
+func ViewFromRow(v db.View) View {
+	return View{
+		ID:         uid(v.ID),
+		OwnerID:    uid(v.OwnerID),
+		Name:       v.Name,
+		Definition: json.RawMessage(v.Definition),
+		Shared:     v.Shared,
+		CreatedAt:  ts(v.CreatedAt).Format(TimeFormat),
+	}
+}
+
+func AttachmentFromRow(a db.ListProjectAttachmentsRow) Attachment {
+	return Attachment{
+		ID:             uid(a.ID),
+		Filename:       a.Filename,
+		ContentType:    a.ContentType,
+		SizeBytes:      a.SizeBytes,
+		UploadedBy:     uid(a.UploadedBy),
+		UploadedByName: a.UploadedByName,
+		CreatedAt:      ts(a.CreatedAt).Format(TimeFormat),
+	}
 }

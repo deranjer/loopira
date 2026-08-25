@@ -17,11 +17,18 @@ export interface Label {
   color: string
 }
 
+export type ProjectStatus = 'backlog' | 'planned' | 'in_progress' | 'paused' | 'completed' | 'canceled'
+
 export interface Project {
   id: string
   name: string
   description: string | null
-  status: string
+  status: ProjectStatus
+  priority: number
+  leadId: string | null
+  leadName: string | null
+  targetDate: string | null
+  issueCount: number
   progress: number
 }
 
@@ -36,6 +43,16 @@ export interface Cycle {
   progress: number
 }
 
+export interface Attachment {
+  id: string
+  filename: string
+  contentType: string
+  sizeBytes: number
+  uploadedBy: string
+  uploadedByName: string
+  createdAt: string
+}
+
 export interface ApiKey {
   id: string
   name: string
@@ -46,6 +63,34 @@ export interface ApiKey {
 
 export interface NewApiKey extends ApiKey {
   key: string // plaintext, present only on creation
+}
+
+export interface ViewFilters {
+  status?: string
+  assigneeId?: string // may be the literal 'me', resolved client-side at apply-time
+  projectId?: string
+  labelId?: string
+  priority?: number
+}
+
+export type ViewGroupBy = 'status' | 'assignee' | 'project' | 'priority' | 'none'
+export type ViewSortBy = 'createdAt' | 'updatedAt' | 'priority' | 'dueDate'
+export type ViewSortDir = 'asc' | 'desc'
+
+export interface ViewDefinition {
+  filters: ViewFilters
+  groupBy: ViewGroupBy
+  sortBy: ViewSortBy
+  sortDir: ViewSortDir
+}
+
+export interface View {
+  id: string
+  ownerId: string
+  name: string
+  definition: ViewDefinition
+  shared: boolean
+  createdAt: string
 }
 
 export type IssueStatusValue = 'backlog' | 'todo' | 'in_progress' | 'done' | 'canceled'

@@ -248,14 +248,23 @@ WHERE i.team_id = $1
   AND ($2::text IS NULL OR i.status = $2)
   AND ($3::uuid IS NULL OR i.project_id = $3)
   AND ($4::uuid IS NULL OR i.cycle_id = $4)
+  AND ($5::uuid IS NULL OR i.assignee_id = $5)
+  AND ($6::smallint IS NULL OR i.priority = $6)
+  AND (
+    $7::uuid IS NULL
+    OR EXISTS (SELECT 1 FROM issue_labels il2 WHERE il2.issue_id = i.id AND il2.label_id = $7)
+  )
 ORDER BY i.created_at DESC
 `
 
 type ListIssuesParams struct {
-	TeamID    pgtype.UUID `json:"team_id"`
-	Status    pgtype.Text `json:"status"`
-	ProjectID pgtype.UUID `json:"project_id"`
-	CycleID   pgtype.UUID `json:"cycle_id"`
+	TeamID     pgtype.UUID `json:"team_id"`
+	Status     pgtype.Text `json:"status"`
+	ProjectID  pgtype.UUID `json:"project_id"`
+	CycleID    pgtype.UUID `json:"cycle_id"`
+	AssigneeID pgtype.UUID `json:"assignee_id"`
+	Priority   pgtype.Int2 `json:"priority"`
+	LabelID    pgtype.UUID `json:"label_id"`
 }
 
 type ListIssuesRow struct {
@@ -288,6 +297,9 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListI
 		arg.Status,
 		arg.ProjectID,
 		arg.CycleID,
+		arg.AssigneeID,
+		arg.Priority,
+		arg.LabelID,
 	)
 	if err != nil {
 		return nil, err

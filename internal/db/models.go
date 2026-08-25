@@ -28,6 +28,7 @@ type Attachment struct {
 	StorageKey  string             `json:"storage_key"`
 	UploadedBy  pgtype.UUID        `json:"uploaded_by"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ProjectID   pgtype.UUID        `json:"project_id"`
 }
 
 type Comment struct {
@@ -123,6 +124,14 @@ type Project struct {
 	Description pgtype.Text        `json:"description"`
 	Status      string             `json:"status"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	LeadID      pgtype.UUID        `json:"lead_id"`
+	TargetDate  pgtype.Date        `json:"target_date"`
+	Priority    int16              `json:"priority"`
+}
+
+type ProjectMember struct {
+	ProjectID pgtype.UUID `json:"project_id"`
+	UserID    pgtype.UUID `json:"user_id"`
 }
 
 type Session struct {
