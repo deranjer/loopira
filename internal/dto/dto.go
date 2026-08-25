@@ -270,3 +270,57 @@ func AttachmentFromRow(a db.ListProjectAttachmentsRow) Attachment {
 		CreatedAt:      ts(a.CreatedAt).Format(TimeFormat),
 	}
 }
+
+type WorkLog struct {
+	ID          string `json:"id"`
+	ProjectID   string `json:"projectId"`
+	ProjectName string `json:"projectName"`
+	AuthorID    string `json:"authorId"`
+	AuthorName  string `json:"authorName"`
+	Source      string `json:"source"` // "human" or "agent"
+	Title       string `json:"title"`
+	Body        string `json:"body"`
+	CreatedAt   string `json:"createdAt"`
+}
+
+func WorkLogFromProjectRow(w db.ListProjectWorkLogsRow) WorkLog {
+	return WorkLog{
+		ID:          uid(w.ID),
+		ProjectID:   uid(w.ProjectID),
+		ProjectName: w.ProjectName,
+		AuthorID:    uid(w.AuthorID),
+		AuthorName:  w.AuthorName,
+		Source:      w.Source,
+		Title:       w.Title,
+		Body:        w.Body,
+		CreatedAt:   ts(w.CreatedAt).Format(TimeFormat),
+	}
+}
+
+func WorkLogFromGlobalRow(w db.ListWorkLogsRow) WorkLog {
+	return WorkLog{
+		ID:          uid(w.ID),
+		ProjectID:   uid(w.ProjectID),
+		ProjectName: w.ProjectName,
+		AuthorID:    uid(w.AuthorID),
+		AuthorName:  w.AuthorName,
+		Source:      w.Source,
+		Title:       w.Title,
+		Body:        w.Body,
+		CreatedAt:   ts(w.CreatedAt).Format(TimeFormat),
+	}
+}
+
+func WorkLogFromGetRow(w db.GetWorkLogRow) WorkLog {
+	return WorkLog{
+		ID:          uid(w.ID),
+		ProjectID:   uid(w.ProjectID),
+		ProjectName: w.ProjectName,
+		AuthorID:    uid(w.AuthorID),
+		AuthorName:  w.AuthorName,
+		Source:      w.Source,
+		Title:       w.Title,
+		Body:        w.Body,
+		CreatedAt:   ts(w.CreatedAt).Format(TimeFormat),
+	}
+}

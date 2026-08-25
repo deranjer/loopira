@@ -1,4 +1,4 @@
-import type { ApiKey, Attachment, Cycle, Issue, Label, NewApiKey, Project, Team, User, View, ViewDefinition } from './types'
+import type { ApiKey, Attachment, Cycle, Issue, Label, NewApiKey, Project, Team, User, View, ViewDefinition, WorkLog, WorkLogSource } from './types'
 
 export class ApiError extends Error {
   status: number
@@ -141,6 +141,45 @@ export const viewsApi = {
   update: (id: string, name: string, definition: ViewDefinition, shared: boolean) =>
     request<View>(`/views/${id}`, { method: 'PATCH', body: JSON.stringify({ name, definition, shared }) }),
   delete: (id: string) => request<{ status: string }>(`/views/${id}`, { method: 'DELETE' }),
+}
+
+export interface WorkLogFilters {
+  projectId?: string
+  authorId?: string
+  source?: WorkLogSource
+  search?: string
+  from?: string
+  to?: string
+  limit?: number
+  offset?: number
+}
+
+export interface WorkLogListResult {
+  items: WorkLog[]
+  total: number
+}
+
+export interface CreateWorkLogInput {
+  title: string
+  body: string
+}
+
+export const workLogsApi = {
+  listForProject: (projectId: string) => request<WorkLog[]>(`/projects/${projectId}/worklogs`),
+  create: (projectId: string, input: CreateWorkLogInput) =>
+    request<WorkLog>(`/projects/${projectId}/worklogs`, { method: 'POST', body: JSON.stringify(input) }),
+  list: (filters: WorkLogFilters) => {
+    const params = new URLSearchParams()
+    if (filters.projectId) params.set('projectId', filters.projectId)
+    if (filters.authorId) params.set('authorId', filters.authorId)
+    if (filters.source) params.set('source', filters.source)
+    if (filters.search) params.set('search', filters.search)
+    if (filters.from) params.set('from', filters.from)
+    if (filters.to) params.set('to', filters.to)
+    params.set('limit', String(filters.limit ?? 25))
+    params.set('offset', String(filters.offset ?? 0))
+    return request<WorkLogListResult>(`/worklogs?${params.toString()}`)
+  },
 }
 
 export const issuesApi = {

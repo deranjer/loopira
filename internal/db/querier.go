@@ -16,6 +16,7 @@ type Querier interface {
 	AddTeamMember(ctx context.Context, arg AddTeamMemberParams) error
 	ClearIssueLabels(ctx context.Context, issueID pgtype.UUID) error
 	CountUsers(ctx context.Context) (int64, error)
+	CountWorkLogs(ctx context.Context, arg CountWorkLogsParams) (int32, error)
 	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (ApiKey, error)
 	CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error)
 	CreateCycle(ctx context.Context, arg CreateCycleParams) (Cycle, error)
@@ -26,6 +27,7 @@ type Querier interface {
 	CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateView(ctx context.Context, arg CreateViewParams) (View, error)
+	CreateWorkLog(ctx context.Context, arg CreateWorkLogParams) (WorkLog, error)
 	DeleteAPIKey(ctx context.Context, arg DeleteAPIKeyParams) (int64, error)
 	DeleteAttachment(ctx context.Context, id pgtype.UUID) error
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
@@ -39,16 +41,19 @@ type Querier interface {
 	GetTeam(ctx context.Context, id pgtype.UUID) (Team, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	GetWorkLog(ctx context.Context, id pgtype.UUID) (GetWorkLogRow, error)
 	ListAPIKeysByUser(ctx context.Context, userID pgtype.UUID) ([]ApiKey, error)
 	ListCycles(ctx context.Context, teamID pgtype.UUID) ([]ListCyclesRow, error)
 	ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListIssuesRow, error)
 	ListLabels(ctx context.Context, teamID pgtype.UUID) ([]Label, error)
 	ListProjectAttachments(ctx context.Context, projectID pgtype.UUID) ([]ListProjectAttachmentsRow, error)
 	ListProjectMembers(ctx context.Context, projectID pgtype.UUID) ([]User, error)
+	ListProjectWorkLogs(ctx context.Context, projectID pgtype.UUID) ([]ListProjectWorkLogsRow, error)
 	ListProjects(ctx context.Context, teamID pgtype.UUID) ([]ListProjectsRow, error)
 	ListTeams(ctx context.Context) ([]Team, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListViews(ctx context.Context, ownerID pgtype.UUID) ([]View, error)
+	ListWorkLogs(ctx context.Context, arg ListWorkLogsParams) ([]ListWorkLogsRow, error)
 	RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error
 	UpdateAPIKeyLastUsed(ctx context.Context, id pgtype.UUID) error
 	UpdateIssueDetails(ctx context.Context, arg UpdateIssueDetailsParams) (Issue, error)

@@ -5,6 +5,7 @@ import {
   IconLayoutKanban,
   IconListDetails,
   IconLogout,
+  IconNotes,
   IconRepeat,
   IconSearch,
   IconSettings,
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { to: '/board', label: 'Board', icon: IconLayoutKanban },
   { to: '/cycles', label: 'Cycles', icon: IconRepeat },
   { to: '/projects', label: 'Projects', icon: IconFolder },
+  { to: '/worklog', label: 'Work Log', icon: IconNotes },
   { to: '/views', label: 'Views', icon: IconStack2 },
   { to: '/settings', label: 'Settings', icon: IconSettings },
 ]

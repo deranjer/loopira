@@ -93,6 +93,20 @@ export interface View {
   createdAt: string
 }
 
+export type WorkLogSource = 'human' | 'agent'
+
+export interface WorkLog {
+  id: string
+  projectId: string
+  projectName: string
+  authorId: string
+  authorName: string
+  source: WorkLogSource
+  title: string
+  body: string
+  createdAt: string
+}
+
 export type IssueStatusValue = 'backlog' | 'todo' | 'in_progress' | 'done' | 'canceled'
 
 export interface Issue {

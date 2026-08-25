@@ -9,6 +9,7 @@ import { BoardView } from './pages/BoardView'
 import { CyclesView } from './pages/CyclesView'
 import { ProjectsView } from './pages/ProjectsView'
 import { ProjectDetailView } from './pages/ProjectDetailView'
+import { WorkLogView } from './pages/WorkLogView'
 import { ViewsView } from './pages/ViewsView'
 import { SettingsView } from './pages/SettingsView'
 
@@ -41,6 +42,7 @@ function App() {
           <Route path="/cycles" element={<CyclesView />} />
           <Route path="/projects" element={<ProjectsView />} />
           <Route path="/projects/:id" element={<ProjectDetailView />} />
+          <Route path="/worklog" element={<WorkLogView />} />
           <Route path="/views" element={<ViewsView />} />
           <Route path="/settings" element={<SettingsView />} />
         </Route>
