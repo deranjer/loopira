@@ -22,6 +22,6 @@ Generates static content into the `build` directory.
 
 ## Deployment
 
-Pushes to `master` that touch `docs/**` are built and deployed to GitHub
+Pushes to `main` that touch `docs/**` are built and deployed to GitHub
 Pages automatically by `.github/workflows/docs.yml`. There's no manual
 deploy step.

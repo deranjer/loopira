@@ -41,7 +41,7 @@ const config: Config = {
         docs: {
           routeBasePath: '/',
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/deranjer/loopira/edit/master/docs/',
+          editUrl: 'https://github.com/deranjer/loopira/edit/main/docs/',
         },
         blog: false,
         theme: {

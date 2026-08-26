@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
     inputs:
       version:
@@ -84,6 +84,7 @@ jobs:
             type=raw,value=v${{ env.VERSION }}
             type=raw,value=v${{ steps.verparts.outputs.major_minor }}
             type=raw,value=v${{ steps.verparts.outputs.major }}
+            type=raw,value=latest
             type=sha
 
       - name: Build and push
