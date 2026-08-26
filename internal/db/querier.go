@@ -12,8 +12,10 @@ import (
 
 type Querier interface {
 	AddIssueLabel(ctx context.Context, arg AddIssueLabelParams) error
+	AddProjectGuideFragment(ctx context.Context, arg AddProjectGuideFragmentParams) (ProjectGuideFragment, error)
 	AddProjectMember(ctx context.Context, arg AddProjectMemberParams) error
 	AddTeamMember(ctx context.Context, arg AddTeamMemberParams) error
+	AddTemplateFragment(ctx context.Context, arg AddTemplateFragmentParams) error
 	ClearIssueLabels(ctx context.Context, issueID pgtype.UUID) error
 	CountUsers(ctx context.Context) (int64, error)
 	CountWorkLogs(ctx context.Context, arg CountWorkLogsParams) (int32, error)
@@ -25,12 +27,17 @@ type Querier interface {
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error)
+	CreateTemplate(ctx context.Context, arg CreateTemplateParams) (Template, error)
+	CreateTemplateFragment(ctx context.Context, arg CreateTemplateFragmentParams) (TemplateFragment, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateView(ctx context.Context, arg CreateViewParams) (View, error)
 	CreateWorkLog(ctx context.Context, arg CreateWorkLogParams) (WorkLog, error)
 	DeleteAPIKey(ctx context.Context, arg DeleteAPIKeyParams) (int64, error)
 	DeleteAttachment(ctx context.Context, id pgtype.UUID) error
+	DeleteProjectGuideFragment(ctx context.Context, id pgtype.UUID) error
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
+	DeleteTemplate(ctx context.Context, id pgtype.UUID) error
+	DeleteTemplateFragment(ctx context.Context, id pgtype.UUID) error
 	DeleteView(ctx context.Context, arg DeleteViewParams) error
 	GetAPIKeyByHash(ctx context.Context, keyHash string) (GetAPIKeyByHashRow, error)
 	GetAttachment(ctx context.Context, id pgtype.UUID) (Attachment, error)
@@ -39,27 +46,45 @@ type Querier interface {
 	GetProject(ctx context.Context, id pgtype.UUID) (GetProjectRow, error)
 	GetSession(ctx context.Context, id pgtype.UUID) (Session, error)
 	GetTeam(ctx context.Context, id pgtype.UUID) (Team, error)
+	GetTemplate(ctx context.Context, id pgtype.UUID) (GetTemplateRow, error)
+	GetTemplateFragment(ctx context.Context, id pgtype.UUID) (GetTemplateFragmentRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	GetWorkLog(ctx context.Context, id pgtype.UUID) (GetWorkLogRow, error)
 	ListAPIKeysByUser(ctx context.Context, userID pgtype.UUID) ([]ApiKey, error)
 	ListCycles(ctx context.Context, teamID pgtype.UUID) ([]ListCyclesRow, error)
+	ListFragmentUsage(ctx context.Context, fragmentID pgtype.UUID) ([]ListFragmentUsageRow, error)
 	ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListIssuesRow, error)
 	ListLabels(ctx context.Context, teamID pgtype.UUID) ([]Label, error)
 	ListProjectAttachments(ctx context.Context, projectID pgtype.UUID) ([]ListProjectAttachmentsRow, error)
+	ListProjectGuideFragments(ctx context.Context, projectID pgtype.UUID) ([]ProjectGuideFragment, error)
 	ListProjectMembers(ctx context.Context, projectID pgtype.UUID) ([]User, error)
 	ListProjectWorkLogs(ctx context.Context, projectID pgtype.UUID) ([]ListProjectWorkLogsRow, error)
 	ListProjects(ctx context.Context, teamID pgtype.UUID) ([]ListProjectsRow, error)
 	ListTeams(ctx context.Context) ([]Team, error)
+	ListTemplateFragments(ctx context.Context) ([]ListTemplateFragmentsRow, error)
+	// Full fragment content for every fragment linked to a template, in
+	// composition order — used when a Project is created from this template.
+	ListTemplateFragmentsForStamp(ctx context.Context, templateID pgtype.UUID) ([]ListTemplateFragmentsForStampRow, error)
+	ListTemplateLinks(ctx context.Context, templateID pgtype.UUID) ([]ListTemplateLinksRow, error)
+	ListTemplates(ctx context.Context) ([]ListTemplatesRow, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListViews(ctx context.Context, ownerID pgtype.UUID) ([]View, error)
 	ListWorkLogs(ctx context.Context, arg ListWorkLogsParams) ([]ListWorkLogsRow, error)
+	PushFragmentUpdate(ctx context.Context, arg PushFragmentUpdateParams) ([]ProjectGuideFragment, error)
 	RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error
+	RemoveTemplateFragment(ctx context.Context, arg RemoveTemplateFragmentParams) error
+	ResetProjectGuideFragmentToBase(ctx context.Context, id pgtype.UUID) (ProjectGuideFragment, error)
+	SetProjectGuideFragmentPosition(ctx context.Context, arg SetProjectGuideFragmentPositionParams) error
+	SetTemplateFragmentPosition(ctx context.Context, arg SetTemplateFragmentPositionParams) error
 	UpdateAPIKeyLastUsed(ctx context.Context, id pgtype.UUID) error
 	UpdateIssueDetails(ctx context.Context, arg UpdateIssueDetailsParams) (Issue, error)
 	UpdateIssueStatus(ctx context.Context, arg UpdateIssueStatusParams) (Issue, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
+	UpdateProjectGuideFragment(ctx context.Context, arg UpdateProjectGuideFragmentParams) (ProjectGuideFragment, error)
 	UpdateTeamName(ctx context.Context, arg UpdateTeamNameParams) (Team, error)
+	UpdateTemplate(ctx context.Context, arg UpdateTemplateParams) (Template, error)
+	UpdateTemplateFragment(ctx context.Context, arg UpdateTemplateFragmentParams) (TemplateFragment, error)
 	UpdateView(ctx context.Context, arg UpdateViewParams) (View, error)
 }
 

@@ -1,4 +1,23 @@
-import type { ApiKey, Attachment, Cycle, Issue, Label, NewApiKey, Project, Team, User, VersionInfo, View, ViewDefinition, WorkLog, WorkLogSource } from './types'
+import type {
+  ApiKey,
+  Attachment,
+  Cycle,
+  FragmentUsage,
+  Issue,
+  Label,
+  NewApiKey,
+  Project,
+  ProjectGuideFragment,
+  Team,
+  Template,
+  TemplateFragment,
+  User,
+  VersionInfo,
+  View,
+  ViewDefinition,
+  WorkLog,
+  WorkLogSource,
+} from './types'
 
 export class ApiError extends Error {
   status: number
@@ -66,10 +85,71 @@ export interface UpdateProjectInput {
 export const projectsApi = {
   list: (teamId: string) => request<Project[]>(`/projects?teamId=${teamId}`),
   get: (id: string) => request<Project>(`/projects/${id}`),
-  create: (teamId: string, name: string, description: string) =>
-    request<Project>('/projects', { method: 'POST', body: JSON.stringify({ teamId, name, description }) }),
+  create: (teamId: string, name: string, description: string, templateId?: string | null) =>
+    request<Project>('/projects', { method: 'POST', body: JSON.stringify({ teamId, name, description, templateId: templateId || undefined }) }),
   update: (id: string, input: UpdateProjectInput) =>
     request<Project>(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+}
+
+export const templateFragmentsApi = {
+  list: () => request<TemplateFragment[]>('/template-fragments'),
+  get: (id: string) => request<TemplateFragment>(`/template-fragments/${id}`),
+  create: (name: string, category: string, content: string) =>
+    request<TemplateFragment>('/template-fragments', { method: 'POST', body: JSON.stringify({ name, category, content }) }),
+  update: (id: string, name: string, category: string, content: string) =>
+    request<TemplateFragment>(`/template-fragments/${id}`, { method: 'PATCH', body: JSON.stringify({ name, category, content }) }),
+  delete: (id: string) => request<{ status: string }>(`/template-fragments/${id}`, { method: 'DELETE' }),
+  usage: (id: string) => request<FragmentUsage[]>(`/template-fragments/${id}/usage`),
+  push: (id: string, projectGuideFragmentIds: string[]) =>
+    request<ProjectGuideFragment[]>(`/template-fragments/${id}/push`, {
+      method: 'POST',
+      body: JSON.stringify({ projectGuideFragmentIds }),
+    }),
+}
+
+export const templatesApi = {
+  list: () => request<Template[]>('/templates'),
+  get: (id: string) => request<Template>(`/templates/${id}`),
+  create: (name: string, description: string) =>
+    request<Template>('/templates', { method: 'POST', body: JSON.stringify({ name, description }) }),
+  update: (id: string, name: string, description: string) =>
+    request<Template>(`/templates/${id}`, { method: 'PATCH', body: JSON.stringify({ name, description }) }),
+  delete: (id: string) => request<{ status: string }>(`/templates/${id}`, { method: 'DELETE' }),
+  addFragment: (id: string, fragmentId: string) =>
+    request<Template>(`/templates/${id}/fragments`, { method: 'POST', body: JSON.stringify({ fragmentId }) }),
+  removeFragment: (id: string, fragmentId: string) =>
+    request<Template>(`/templates/${id}/fragments/${fragmentId}`, { method: 'DELETE' }),
+  reorderFragments: (id: string, fragmentIds: string[]) =>
+    request<Template>(`/templates/${id}/fragments/reorder`, { method: 'PATCH', body: JSON.stringify({ fragmentIds }) }),
+}
+
+export const projectGuideFragmentsApi = {
+  list: (projectId: string) => request<ProjectGuideFragment[]>(`/projects/${projectId}/guide-fragments`),
+  addFromCatalog: (projectId: string, fragmentId: string) =>
+    request<ProjectGuideFragment>(`/projects/${projectId}/guide-fragments`, {
+      method: 'POST',
+      body: JSON.stringify({ fragmentId }),
+    }),
+  addCustom: (projectId: string, name: string, content: string) =>
+    request<ProjectGuideFragment>(`/projects/${projectId}/guide-fragments`, {
+      method: 'POST',
+      body: JSON.stringify({ name, content }),
+    }),
+  update: (projectId: string, fragmentInstanceId: string, name: string, content: string) =>
+    request<ProjectGuideFragment>(`/projects/${projectId}/guide-fragments/${fragmentInstanceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name, content }),
+    }),
+  delete: (projectId: string, fragmentInstanceId: string) =>
+    request<{ status: string }>(`/projects/${projectId}/guide-fragments/${fragmentInstanceId}`, { method: 'DELETE' }),
+  reset: (projectId: string, fragmentInstanceId: string) =>
+    request<ProjectGuideFragment>(`/projects/${projectId}/guide-fragments/${fragmentInstanceId}/reset`, { method: 'POST' }),
+  reorder: (projectId: string, ids: string[]) =>
+    request<ProjectGuideFragment[]>(`/projects/${projectId}/guide-fragments/reorder`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ids }),
+    }),
+  agentsMdUrl: (projectId: string) => `/api/v1/projects/${projectId}/agents.md`,
 }
 
 export const projectMembersApi = {

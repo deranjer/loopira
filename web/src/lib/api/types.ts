@@ -35,8 +35,61 @@ export interface Project {
   leadId: string | null
   leadName: string | null
   targetDate: string | null
+  templateId: string | null
+  templateName: string | null
   issueCount: number
   progress: number
+}
+
+export interface TemplateFragment {
+  id: string
+  name: string
+  category: string | null
+  content: string
+  version: number
+  authorId: string | null
+  authorName: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FragmentUsage {
+  projectGuideFragmentId: string
+  projectId: string
+  projectName: string
+  locallyModified: boolean
+  baseVersion: number | null
+}
+
+export interface TemplateFragmentRef {
+  id: string
+  name: string
+  category: string | null
+  position: number
+}
+
+export interface Template {
+  id: string
+  name: string
+  description: string | null
+  authorId: string | null
+  authorName: string | null
+  createdAt: string
+  updatedAt: string
+  fragments: TemplateFragmentRef[]
+}
+
+export interface ProjectGuideFragment {
+  id: string
+  projectId: string
+  fragmentId: string | null
+  name: string
+  content: string
+  baseVersion: number | null
+  locallyModified: boolean
+  position: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface Cycle {

@@ -37,6 +37,35 @@ CREATE TABLE team_members (
     PRIMARY KEY (team_id, user_id)
 );
 
+CREATE TABLE template_fragments (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        text NOT NULL,
+    category    text, -- freeform, e.g. "engineering", "stack"
+    content     text NOT NULL DEFAULT '',
+    version     integer NOT NULL DEFAULT 1,
+    created_by  uuid REFERENCES users(id) ON DELETE SET NULL,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE templates (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        text NOT NULL,
+    description text,
+    created_by  uuid REFERENCES users(id) ON DELETE SET NULL,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE template_fragment_links (
+    template_id uuid NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+    fragment_id uuid NOT NULL REFERENCES template_fragments(id) ON DELETE CASCADE,
+    position    integer NOT NULL,
+    PRIMARY KEY (template_id, fragment_id)
+);
+
+CREATE INDEX idx_template_fragment_links_fragment ON template_fragment_links (fragment_id);
+
 CREATE TABLE projects (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id     uuid NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
@@ -46,8 +75,11 @@ CREATE TABLE projects (
     lead_id     uuid REFERENCES users(id) ON DELETE SET NULL,
     target_date date,
     priority    smallint NOT NULL DEFAULT 0 CHECK (priority BETWEEN 0 AND 4),
+    template_id uuid REFERENCES templates(id) ON DELETE SET NULL, -- which template (if any) this project was stamped from
     created_at  timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE INDEX idx_projects_template ON projects (template_id);
 
 CREATE TABLE project_members (
     project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -222,7 +254,24 @@ CREATE INDEX idx_work_logs_project ON work_logs (project_id, created_at DESC);
 CREATE INDEX idx_work_logs_author ON work_logs (author_id);
 CREATE INDEX idx_work_logs_search ON work_logs USING GIN (to_tsvector('english', title || ' ' || body));
 
+CREATE TABLE project_guide_fragments (
+    id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id       uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    fragment_id      uuid REFERENCES template_fragments(id) ON DELETE SET NULL,
+    name             text NOT NULL,
+    content          text NOT NULL DEFAULT '',
+    base_version     integer, -- fragment.version this was last synced to; null if never had a base or base was deleted
+    locally_modified boolean NOT NULL DEFAULT false,
+    position         integer NOT NULL,
+    created_at       timestamptz NOT NULL DEFAULT now(),
+    updated_at       timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_project_guide_fragments_project ON project_guide_fragments (project_id);
+CREATE INDEX idx_project_guide_fragments_fragment ON project_guide_fragments (fragment_id);
+
 -- +goose Down
+DROP TABLE IF EXISTS project_guide_fragments;
 DROP TABLE IF EXISTS work_logs;
 DROP TABLE IF EXISTS attachments;
 DROP TABLE IF EXISTS git_links;
@@ -241,6 +290,9 @@ DROP TABLE IF EXISTS cycles;
 DROP TABLE IF EXISTS milestones;
 DROP TABLE IF EXISTS project_members;
 DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS template_fragment_links;
+DROP TABLE IF EXISTS templates;
+DROP TABLE IF EXISTS template_fragments;
 DROP TABLE IF EXISTS team_members;
 DROP TABLE IF EXISTS teams;
 DROP TABLE IF EXISTS sessions;

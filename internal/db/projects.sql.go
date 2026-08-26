@@ -12,9 +12,9 @@ import (
 )
 
 const createProject = `-- name: CreateProject :one
-INSERT INTO projects (team_id, name, description, status, lead_id, priority, target_date)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, team_id, name, description, status, lead_id, target_date, priority, created_at
+INSERT INTO projects (team_id, name, description, status, lead_id, priority, target_date, template_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, team_id, name, description, status, lead_id, target_date, priority, template_id, created_at
 `
 
 type CreateProjectParams struct {
@@ -25,6 +25,7 @@ type CreateProjectParams struct {
 	LeadID      pgtype.UUID `json:"lead_id"`
 	Priority    int16       `json:"priority"`
 	TargetDate  pgtype.Date `json:"target_date"`
+	TemplateID  pgtype.UUID `json:"template_id"`
 }
 
 func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error) {
@@ -36,6 +37,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		arg.LeadID,
 		arg.Priority,
 		arg.TargetDate,
+		arg.TemplateID,
 	)
 	var i Project
 	err := row.Scan(
@@ -47,6 +49,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.LeadID,
 		&i.TargetDate,
 		&i.Priority,
+		&i.TemplateID,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -54,30 +57,34 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 
 const getProject = `-- name: GetProject :one
 SELECT
-    p.id, p.team_id, p.name, p.description, p.status, p.lead_id, p.target_date, p.priority, p.created_at,
+    p.id, p.team_id, p.name, p.description, p.status, p.lead_id, p.target_date, p.priority, p.template_id, p.created_at,
     u.name AS lead_name,
+    t.name AS template_name,
     count(i.id)::int AS issue_count,
     count(i.id) FILTER (WHERE i.status = 'done')::int AS done_count
 FROM projects p
 LEFT JOIN users u ON u.id = p.lead_id
+LEFT JOIN templates t ON t.id = p.template_id
 LEFT JOIN issues i ON i.project_id = p.id
 WHERE p.id = $1
-GROUP BY p.id, u.name
+GROUP BY p.id, u.name, t.name
 `
 
 type GetProjectRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	TeamID      pgtype.UUID        `json:"team_id"`
-	Name        string             `json:"name"`
-	Description pgtype.Text        `json:"description"`
-	Status      string             `json:"status"`
-	LeadID      pgtype.UUID        `json:"lead_id"`
-	TargetDate  pgtype.Date        `json:"target_date"`
-	Priority    int16              `json:"priority"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	LeadName    pgtype.Text        `json:"lead_name"`
-	IssueCount  int32              `json:"issue_count"`
-	DoneCount   int32              `json:"done_count"`
+	ID           pgtype.UUID        `json:"id"`
+	TeamID       pgtype.UUID        `json:"team_id"`
+	Name         string             `json:"name"`
+	Description  pgtype.Text        `json:"description"`
+	Status       string             `json:"status"`
+	LeadID       pgtype.UUID        `json:"lead_id"`
+	TargetDate   pgtype.Date        `json:"target_date"`
+	Priority     int16              `json:"priority"`
+	TemplateID   pgtype.UUID        `json:"template_id"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	LeadName     pgtype.Text        `json:"lead_name"`
+	TemplateName pgtype.Text        `json:"template_name"`
+	IssueCount   int32              `json:"issue_count"`
+	DoneCount    int32              `json:"done_count"`
 }
 
 func (q *Queries) GetProject(ctx context.Context, id pgtype.UUID) (GetProjectRow, error) {
@@ -92,8 +99,10 @@ func (q *Queries) GetProject(ctx context.Context, id pgtype.UUID) (GetProjectRow
 		&i.LeadID,
 		&i.TargetDate,
 		&i.Priority,
+		&i.TemplateID,
 		&i.CreatedAt,
 		&i.LeadName,
+		&i.TemplateName,
 		&i.IssueCount,
 		&i.DoneCount,
 	)
@@ -102,31 +111,35 @@ func (q *Queries) GetProject(ctx context.Context, id pgtype.UUID) (GetProjectRow
 
 const listProjects = `-- name: ListProjects :many
 SELECT
-    p.id, p.team_id, p.name, p.description, p.status, p.lead_id, p.target_date, p.priority, p.created_at,
+    p.id, p.team_id, p.name, p.description, p.status, p.lead_id, p.target_date, p.priority, p.template_id, p.created_at,
     u.name AS lead_name,
+    t.name AS template_name,
     count(i.id)::int AS issue_count,
     count(i.id) FILTER (WHERE i.status = 'done')::int AS done_count
 FROM projects p
 LEFT JOIN users u ON u.id = p.lead_id
+LEFT JOIN templates t ON t.id = p.template_id
 LEFT JOIN issues i ON i.project_id = p.id
 WHERE p.team_id = $1
-GROUP BY p.id, u.name
+GROUP BY p.id, u.name, t.name
 ORDER BY p.created_at
 `
 
 type ListProjectsRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	TeamID      pgtype.UUID        `json:"team_id"`
-	Name        string             `json:"name"`
-	Description pgtype.Text        `json:"description"`
-	Status      string             `json:"status"`
-	LeadID      pgtype.UUID        `json:"lead_id"`
-	TargetDate  pgtype.Date        `json:"target_date"`
-	Priority    int16              `json:"priority"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	LeadName    pgtype.Text        `json:"lead_name"`
-	IssueCount  int32              `json:"issue_count"`
-	DoneCount   int32              `json:"done_count"`
+	ID           pgtype.UUID        `json:"id"`
+	TeamID       pgtype.UUID        `json:"team_id"`
+	Name         string             `json:"name"`
+	Description  pgtype.Text        `json:"description"`
+	Status       string             `json:"status"`
+	LeadID       pgtype.UUID        `json:"lead_id"`
+	TargetDate   pgtype.Date        `json:"target_date"`
+	Priority     int16              `json:"priority"`
+	TemplateID   pgtype.UUID        `json:"template_id"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	LeadName     pgtype.Text        `json:"lead_name"`
+	TemplateName pgtype.Text        `json:"template_name"`
+	IssueCount   int32              `json:"issue_count"`
+	DoneCount    int32              `json:"done_count"`
 }
 
 func (q *Queries) ListProjects(ctx context.Context, teamID pgtype.UUID) ([]ListProjectsRow, error) {
@@ -147,8 +160,10 @@ func (q *Queries) ListProjects(ctx context.Context, teamID pgtype.UUID) ([]ListP
 			&i.LeadID,
 			&i.TargetDate,
 			&i.Priority,
+			&i.TemplateID,
 			&i.CreatedAt,
 			&i.LeadName,
+			&i.TemplateName,
 			&i.IssueCount,
 			&i.DoneCount,
 		); err != nil {
@@ -171,7 +186,7 @@ UPDATE projects SET
     priority = $6,
     target_date = $7
 WHERE id = $1
-RETURNING id, team_id, name, description, status, lead_id, target_date, priority, created_at
+RETURNING id, team_id, name, description, status, lead_id, target_date, priority, template_id, created_at
 `
 
 type UpdateProjectParams struct {
@@ -204,6 +219,7 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.LeadID,
 		&i.TargetDate,
 		&i.Priority,
+		&i.TemplateID,
 		&i.CreatedAt,
 	)
 	return i, err

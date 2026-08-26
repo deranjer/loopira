@@ -77,10 +77,14 @@ func New(pool *pgxpool.Pool, hub *ws.Hub, store storage.Store) *Server {
 	s.registerIssueRoutes()
 	s.registerAPIKeyRoutes()
 	s.registerViewRoutes()
+	s.registerTemplateFragmentRoutes()
+	s.registerTemplateRoutes()
+	s.registerProjectGuideFragmentRoutes()
 
 	r.With(auth.RequireAuth(s.mgr)).Handle("/ws", hub)
 	s.registerMCPRoute(r)
 	s.registerDocumentUploadRoute(r)
+	s.registerAgentGuideRoute(r)
 
 	return s
 }

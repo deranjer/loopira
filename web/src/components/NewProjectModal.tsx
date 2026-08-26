@@ -1,6 +1,6 @@
-import { Button, Group, Modal, Stack, Textarea, TextInput } from '@mantine/core'
+import { Button, Group, Modal, Select, Stack, Textarea, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
-import { useCreateProject } from '../lib/api/hooks'
+import { useCreateProject, useTemplates } from '../lib/api/hooks'
 
 export function NewProjectModal({
   opened,
@@ -12,11 +12,12 @@ export function NewProjectModal({
   teamId: string
 }) {
   const createProject = useCreateProject()
-  const form = useForm({ initialValues: { name: '', description: '' } })
+  const { data: templates } = useTemplates()
+  const form = useForm({ initialValues: { name: '', description: '', templateId: '' } })
 
   function submit(values: typeof form.values) {
     createProject.mutate(
-      { teamId, name: values.name, description: values.description },
+      { teamId, name: values.name, description: values.description, templateId: values.templateId || undefined },
       {
         onSuccess: () => {
           form.reset()
@@ -32,6 +33,14 @@ export function NewProjectModal({
         <Stack gap="sm">
           <TextInput placeholder="Project name" required autoFocus {...form.getInputProps('name')} />
           <Textarea placeholder="Add description..." minRows={3} autosize {...form.getInputProps('description')} />
+          <Select
+            label="Tech stack template"
+            placeholder="No template"
+            data={(templates ?? []).map((t) => ({ value: t.id, label: t.name }))}
+            clearable
+            searchable
+            {...form.getInputProps('templateId')}
+          />
           <Group justify="flex-end" mt="sm">
             <Button variant="subtle" onClick={onClose} type="button">
               Cancel
