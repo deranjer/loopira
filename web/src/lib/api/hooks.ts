@@ -9,9 +9,12 @@ import {
   type IssueFilters,
   issuesApi,
   labelsApi,
+  projectGuideFragmentsApi,
   projectMembersApi,
   projectsApi,
   teamsApi,
+  templateFragmentsApi,
+  templatesApi,
   type UpdateIssueDetailsInput,
   type UpdateProjectInput,
   usersApi,
@@ -111,8 +114,17 @@ export function useProject(id: string | undefined) {
 export function useCreateProject() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ teamId, name, description }: { teamId: string; name: string; description: string }) =>
-      projectsApi.create(teamId, name, description),
+    mutationFn: ({
+      teamId,
+      name,
+      description,
+      templateId,
+    }: {
+      teamId: string
+      name: string
+      description: string
+      templateId?: string | null
+    }) => projectsApi.create(teamId, name, description, templateId),
     onSuccess: (_data, { teamId }) => qc.invalidateQueries({ queryKey: ['projects', teamId] }),
   })
 }
@@ -337,5 +349,216 @@ export function useUpdateIssueDetails() {
       qc.invalidateQueries({ queryKey: ['issues'] })
       qc.setQueryData(['issue', issue.id], issue)
     },
+  })
+}
+
+export function useTemplateFragments() {
+  return useQuery({ queryKey: ['templateFragments'], queryFn: templateFragmentsApi.list })
+}
+
+export function useTemplateFragment(id: string | undefined) {
+  return useQuery({
+    queryKey: ['templateFragment', id],
+    queryFn: () => templateFragmentsApi.get(id!),
+    enabled: !!id,
+  })
+}
+
+export function useFragmentUsage(id: string | undefined) {
+  return useQuery({
+    queryKey: ['fragmentUsage', id],
+    queryFn: () => templateFragmentsApi.usage(id!),
+    enabled: !!id,
+  })
+}
+
+export function useCreateTemplateFragment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, category, content }: { name: string; category: string; content: string }) =>
+      templateFragmentsApi.create(name, category, content),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['templateFragments'] }),
+  })
+}
+
+export function useUpdateTemplateFragment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      name,
+      category,
+      content,
+    }: {
+      id: string
+      name: string
+      category: string
+      content: string
+    }) => templateFragmentsApi.update(id, name, category, content),
+    onSuccess: (fragment) => {
+      qc.invalidateQueries({ queryKey: ['templateFragments'] })
+      qc.setQueryData(['templateFragment', fragment.id], fragment)
+    },
+  })
+}
+
+export function useDeleteTemplateFragment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => templateFragmentsApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['templateFragments'] }),
+  })
+}
+
+export function usePushFragmentUpdate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, projectGuideFragmentIds }: { id: string; projectGuideFragmentIds: string[] }) =>
+      templateFragmentsApi.push(id, projectGuideFragmentIds),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ['fragmentUsage', id] })
+      qc.invalidateQueries({ queryKey: ['projectGuideFragments'] })
+    },
+  })
+}
+
+export function useTemplates() {
+  return useQuery({ queryKey: ['templates'], queryFn: templatesApi.list })
+}
+
+export function useTemplate(id: string | undefined) {
+  return useQuery({
+    queryKey: ['template', id],
+    queryFn: () => templatesApi.get(id!),
+    enabled: !!id,
+  })
+}
+
+export function useCreateTemplate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, description }: { name: string; description: string }) =>
+      templatesApi.create(name, description),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['templates'] }),
+  })
+}
+
+export function useUpdateTemplate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, name, description }: { id: string; name: string; description: string }) =>
+      templatesApi.update(id, name, description),
+    onSuccess: (template) => {
+      qc.invalidateQueries({ queryKey: ['templates'] })
+      qc.setQueryData(['template', template.id], template)
+    },
+  })
+}
+
+export function useDeleteTemplate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => templatesApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['templates'] }),
+  })
+}
+
+export function useAddTemplateFragment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, fragmentId }: { id: string; fragmentId: string }) => templatesApi.addFragment(id, fragmentId),
+    onSuccess: (template) => qc.setQueryData(['template', template.id], template),
+  })
+}
+
+export function useRemoveTemplateFragment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, fragmentId }: { id: string; fragmentId: string }) =>
+      templatesApi.removeFragment(id, fragmentId),
+    onSuccess: (template) => qc.setQueryData(['template', template.id], template),
+  })
+}
+
+export function useReorderTemplateFragments() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, fragmentIds }: { id: string; fragmentIds: string[] }) =>
+      templatesApi.reorderFragments(id, fragmentIds),
+    onSuccess: (template) => qc.setQueryData(['template', template.id], template),
+  })
+}
+
+export function useProjectGuideFragments(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['projectGuideFragments', projectId],
+    queryFn: () => projectGuideFragmentsApi.list(projectId!),
+    enabled: !!projectId,
+  })
+}
+
+export function useAddProjectGuideFragment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      fragmentId,
+      name,
+      content,
+    }: {
+      projectId: string
+      fragmentId?: string
+      name?: string
+      content?: string
+    }) =>
+      fragmentId
+        ? projectGuideFragmentsApi.addFromCatalog(projectId, fragmentId)
+        : projectGuideFragmentsApi.addCustom(projectId, name ?? '', content ?? ''),
+    onSuccess: (_data, { projectId }) => qc.invalidateQueries({ queryKey: ['projectGuideFragments', projectId] }),
+  })
+}
+
+export function useUpdateProjectGuideFragment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      fragmentInstanceId,
+      name,
+      content,
+    }: {
+      projectId: string
+      fragmentInstanceId: string
+      name: string
+      content: string
+    }) => projectGuideFragmentsApi.update(projectId, fragmentInstanceId, name, content),
+    onSuccess: (_data, { projectId }) => qc.invalidateQueries({ queryKey: ['projectGuideFragments', projectId] }),
+  })
+}
+
+export function useDeleteProjectGuideFragment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, fragmentInstanceId }: { projectId: string; fragmentInstanceId: string }) =>
+      projectGuideFragmentsApi.delete(projectId, fragmentInstanceId),
+    onSuccess: (_data, { projectId }) => qc.invalidateQueries({ queryKey: ['projectGuideFragments', projectId] }),
+  })
+}
+
+export function useResetProjectGuideFragment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, fragmentInstanceId }: { projectId: string; fragmentInstanceId: string }) =>
+      projectGuideFragmentsApi.reset(projectId, fragmentInstanceId),
+    onSuccess: (_data, { projectId }) => qc.invalidateQueries({ queryKey: ['projectGuideFragments', projectId] }),
+  })
+}
+
+export function useReorderProjectGuideFragments() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, ids }: { projectId: string; ids: string[] }) =>
+      projectGuideFragmentsApi.reorder(projectId, ids),
+    onSuccess: (_data, { projectId }) => qc.invalidateQueries({ queryKey: ['projectGuideFragments', projectId] }),
   })
 }

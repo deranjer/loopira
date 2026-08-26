@@ -50,6 +50,14 @@ func nullableDate(d pgtype.Date) *string {
 	return &s
 }
 
+func nullableInt(i pgtype.Int4) *int {
+	if !i.Valid {
+		return nil
+	}
+	v := int(i.Int32)
+	return &v
+}
+
 func progressPct(done, total int32) int {
 	if total == 0 {
 		return 0
@@ -125,45 +133,51 @@ func IssueFromGetRow(r db.GetIssueRow) Issue {
 }
 
 type Project struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-	Status      string  `json:"status"`
-	Priority    int16   `json:"priority"`
-	LeadID      *string `json:"leadId"`
-	LeadName    *string `json:"leadName"`
-	TargetDate  *string `json:"targetDate"`
-	IssueCount  int     `json:"issueCount"`
-	Progress    int     `json:"progress"` // 0-100, percent of issues done
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Description  *string `json:"description"`
+	Status       string  `json:"status"`
+	Priority     int16   `json:"priority"`
+	LeadID       *string `json:"leadId"`
+	LeadName     *string `json:"leadName"`
+	TargetDate   *string `json:"targetDate"`
+	TemplateID   *string `json:"templateId"`
+	TemplateName *string `json:"templateName"`
+	IssueCount   int     `json:"issueCount"`
+	Progress     int     `json:"progress"` // 0-100, percent of issues done
 }
 
 func ProjectFromRow(p db.ListProjectsRow) Project {
 	return Project{
-		ID:          uid(p.ID),
-		Name:        p.Name,
-		Description: nullableText(p.Description),
-		Status:      p.Status,
-		Priority:    p.Priority,
-		LeadID:      nullableUID(p.LeadID),
-		LeadName:    nullableText(p.LeadName),
-		TargetDate:  nullableDate(p.TargetDate),
-		IssueCount:  int(p.IssueCount),
-		Progress:    progressPct(p.DoneCount, p.IssueCount),
+		ID:           uid(p.ID),
+		Name:         p.Name,
+		Description:  nullableText(p.Description),
+		Status:       p.Status,
+		Priority:     p.Priority,
+		LeadID:       nullableUID(p.LeadID),
+		LeadName:     nullableText(p.LeadName),
+		TargetDate:   nullableDate(p.TargetDate),
+		TemplateID:   nullableUID(p.TemplateID),
+		TemplateName: nullableText(p.TemplateName),
+		IssueCount:   int(p.IssueCount),
+		Progress:     progressPct(p.DoneCount, p.IssueCount),
 	}
 }
 
 func ProjectFromGetRow(p db.GetProjectRow) Project {
 	return Project{
-		ID:          uid(p.ID),
-		Name:        p.Name,
-		Description: nullableText(p.Description),
-		Status:      p.Status,
-		Priority:    p.Priority,
-		LeadID:      nullableUID(p.LeadID),
-		LeadName:    nullableText(p.LeadName),
-		TargetDate:  nullableDate(p.TargetDate),
-		IssueCount:  int(p.IssueCount),
-		Progress:    progressPct(p.DoneCount, p.IssueCount),
+		ID:           uid(p.ID),
+		Name:         p.Name,
+		Description:  nullableText(p.Description),
+		Status:       p.Status,
+		Priority:     p.Priority,
+		LeadID:       nullableUID(p.LeadID),
+		LeadName:     nullableText(p.LeadName),
+		TargetDate:   nullableDate(p.TargetDate),
+		TemplateID:   nullableUID(p.TemplateID),
+		TemplateName: nullableText(p.TemplateName),
+		IssueCount:   int(p.IssueCount),
+		Progress:     progressPct(p.DoneCount, p.IssueCount),
 	}
 }
 
@@ -322,5 +336,167 @@ func WorkLogFromGetRow(w db.GetWorkLogRow) WorkLog {
 		Title:       w.Title,
 		Body:        w.Body,
 		CreatedAt:   ts(w.CreatedAt).Format(TimeFormat),
+	}
+}
+
+type TemplateFragment struct {
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	Category   *string `json:"category"`
+	Content    string  `json:"content"`
+	Version    int     `json:"version"`
+	AuthorID   *string `json:"authorId"`
+	AuthorName *string `json:"authorName"`
+	CreatedAt  string  `json:"createdAt"`
+	UpdatedAt  string  `json:"updatedAt"`
+}
+
+func TemplateFragmentFromRow(f db.ListTemplateFragmentsRow) TemplateFragment {
+	return TemplateFragment{
+		ID:         uid(f.ID),
+		Name:       f.Name,
+		Category:   nullableText(f.Category),
+		Content:    f.Content,
+		Version:    int(f.Version),
+		AuthorID:   nullableUID(f.CreatedBy),
+		AuthorName: nullableText(f.AuthorName),
+		CreatedAt:  ts(f.CreatedAt).Format(TimeFormat),
+		UpdatedAt:  ts(f.UpdatedAt).Format(TimeFormat),
+	}
+}
+
+func TemplateFragmentFromGetRow(f db.GetTemplateFragmentRow) TemplateFragment {
+	return TemplateFragment{
+		ID:         uid(f.ID),
+		Name:       f.Name,
+		Category:   nullableText(f.Category),
+		Content:    f.Content,
+		Version:    int(f.Version),
+		AuthorID:   nullableUID(f.CreatedBy),
+		AuthorName: nullableText(f.AuthorName),
+		CreatedAt:  ts(f.CreatedAt).Format(TimeFormat),
+		UpdatedAt:  ts(f.UpdatedAt).Format(TimeFormat),
+	}
+}
+
+func TemplateFragmentFromRecord(f db.TemplateFragment) TemplateFragment {
+	return TemplateFragment{
+		ID:        uid(f.ID),
+		Name:      f.Name,
+		Category:  nullableText(f.Category),
+		Content:   f.Content,
+		Version:   int(f.Version),
+		AuthorID:  nullableUID(f.CreatedBy),
+		CreatedAt: ts(f.CreatedAt).Format(TimeFormat),
+		UpdatedAt: ts(f.UpdatedAt).Format(TimeFormat),
+	}
+}
+
+type FragmentUsage struct {
+	ProjectGuideFragmentID string `json:"projectGuideFragmentId"`
+	ProjectID              string `json:"projectId"`
+	ProjectName            string `json:"projectName"`
+	LocallyModified        bool   `json:"locallyModified"`
+	BaseVersion            *int   `json:"baseVersion"`
+}
+
+func FragmentUsageFromRow(r db.ListFragmentUsageRow) FragmentUsage {
+	return FragmentUsage{
+		ProjectGuideFragmentID: uid(r.ProjectGuideFragmentID),
+		ProjectID:              uid(r.ProjectID),
+		ProjectName:            r.ProjectName,
+		LocallyModified:        r.LocallyModified,
+		BaseVersion:            nullableInt(r.BaseVersion),
+	}
+}
+
+type TemplateFragmentRef struct {
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Category *string `json:"category"`
+	Position int     `json:"position"`
+}
+
+type Template struct {
+	ID          string                `json:"id"`
+	Name        string                `json:"name"`
+	Description *string               `json:"description"`
+	AuthorID    *string               `json:"authorId"`
+	AuthorName  *string               `json:"authorName"`
+	CreatedAt   string                `json:"createdAt"`
+	UpdatedAt   string                `json:"updatedAt"`
+	Fragments   []TemplateFragmentRef `json:"fragments"`
+}
+
+func TemplateFromRow(t db.ListTemplatesRow) Template {
+	return Template{
+		ID:          uid(t.ID),
+		Name:        t.Name,
+		Description: nullableText(t.Description),
+		AuthorID:    nullableUID(t.CreatedBy),
+		AuthorName:  nullableText(t.AuthorName),
+		CreatedAt:   ts(t.CreatedAt).Format(TimeFormat),
+		UpdatedAt:   ts(t.UpdatedAt).Format(TimeFormat),
+	}
+}
+
+func TemplateFromRecord(t db.Template) Template {
+	return Template{
+		ID:          uid(t.ID),
+		Name:        t.Name,
+		Description: nullableText(t.Description),
+		AuthorID:    nullableUID(t.CreatedBy),
+		CreatedAt:   ts(t.CreatedAt).Format(TimeFormat),
+		UpdatedAt:   ts(t.UpdatedAt).Format(TimeFormat),
+		Fragments:   []TemplateFragmentRef{},
+	}
+}
+
+func TemplateFromGetRow(t db.GetTemplateRow) Template {
+	return Template{
+		ID:          uid(t.ID),
+		Name:        t.Name,
+		Description: nullableText(t.Description),
+		AuthorID:    nullableUID(t.CreatedBy),
+		AuthorName:  nullableText(t.AuthorName),
+		CreatedAt:   ts(t.CreatedAt).Format(TimeFormat),
+		UpdatedAt:   ts(t.UpdatedAt).Format(TimeFormat),
+	}
+}
+
+func TemplateFragmentRefFromRow(l db.ListTemplateLinksRow) TemplateFragmentRef {
+	return TemplateFragmentRef{
+		ID:       uid(l.FragmentID),
+		Name:     l.Name,
+		Category: nullableText(l.Category),
+		Position: int(l.Position),
+	}
+}
+
+type ProjectGuideFragment struct {
+	ID              string  `json:"id"`
+	ProjectID       string  `json:"projectId"`
+	FragmentID      *string `json:"fragmentId"`
+	Name            string  `json:"name"`
+	Content         string  `json:"content"`
+	BaseVersion     *int    `json:"baseVersion"`
+	LocallyModified bool    `json:"locallyModified"`
+	Position        int     `json:"position"`
+	CreatedAt       string  `json:"createdAt"`
+	UpdatedAt       string  `json:"updatedAt"`
+}
+
+func ProjectGuideFragmentFromRow(f db.ProjectGuideFragment) ProjectGuideFragment {
+	return ProjectGuideFragment{
+		ID:              uid(f.ID),
+		ProjectID:       uid(f.ProjectID),
+		FragmentID:      nullableUID(f.FragmentID),
+		Name:            f.Name,
+		Content:         f.Content,
+		BaseVersion:     nullableInt(f.BaseVersion),
+		LocallyModified: f.LocallyModified,
+		Position:        int(f.Position),
+		CreatedAt:       ts(f.CreatedAt).Format(TimeFormat),
+		UpdatedAt:       ts(f.UpdatedAt).Format(TimeFormat),
 	}
 }

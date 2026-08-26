@@ -2,6 +2,7 @@ import { AppShell as MantineAppShell, Avatar, Menu, Text, Tooltip, UnstyledButto
 import { spotlight } from '@mantine/spotlight'
 import {
   IconArrowUpCircle,
+  IconFileText,
   IconFolder,
   IconLayoutKanban,
   IconListDetails,
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { to: '/projects', label: 'Projects', icon: IconFolder },
   { to: '/worklog', label: 'Work Log', icon: IconNotes },
   { to: '/views', label: 'Views', icon: IconStack2 },
+  { to: '/templates', label: 'Templates', icon: IconFileText },
   { to: '/settings', label: 'Settings', icon: IconSettings },
 ]
 

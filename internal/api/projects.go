@@ -34,6 +34,7 @@ type createProjectInput struct {
 		LeadID      *string `json:"leadId,omitempty"`
 		Priority    int16   `json:"priority,omitempty" minimum:"0" maximum:"4"`
 		TargetDate  *string `json:"targetDate,omitempty"`
+		TemplateID  *string `json:"templateId,omitempty"`
 	}
 }
 
@@ -114,6 +115,20 @@ func (s *Server) registerProjectRoutes() {
 		if status == "" {
 			status = "backlog"
 		}
+		templateID, err := optionalUUID(input.Body.TemplateID)
+		if err != nil {
+			return nil, huma.Error400BadRequest("invalid templateId")
+		}
+		var stampFragments []db.ListTemplateFragmentsForStampRow
+		if templateID.Valid {
+			if _, err := s.q.GetTemplate(ctx, templateID); err != nil {
+				return nil, huma.Error404NotFound("template not found")
+			}
+			stampFragments, err = s.q.ListTemplateFragmentsForStamp(ctx, templateID)
+			if err != nil {
+				return nil, err
+			}
+		}
 		created, err := s.q.CreateProject(ctx, db.CreateProjectParams{
 			TeamID:      teamID,
 			Name:        input.Body.Name,
@@ -122,9 +137,21 @@ func (s *Server) registerProjectRoutes() {
 			LeadID:      leadID,
 			Priority:    input.Body.Priority,
 			TargetDate:  targetDate,
+			TemplateID:  templateID,
 		})
 		if err != nil {
 			return nil, err
+		}
+		for _, f := range stampFragments {
+			if _, err := s.q.AddProjectGuideFragment(ctx, db.AddProjectGuideFragmentParams{
+				ProjectID:   created.ID,
+				FragmentID:  f.ID,
+				Name:        f.Name,
+				Content:     f.Content,
+				BaseVersion: pgtype.Int4{Int32: f.Version, Valid: true},
+			}); err != nil {
+				return nil, err
+			}
 		}
 		row, err := s.q.GetProject(ctx, created.ID)
 		if err != nil {

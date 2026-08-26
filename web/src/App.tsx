@@ -12,6 +12,7 @@ import { ProjectDetailView } from './pages/ProjectDetailView'
 import { WorkLogView } from './pages/WorkLogView'
 import { ViewsView } from './pages/ViewsView'
 import { SettingsView } from './pages/SettingsView'
+import { TemplatesView } from './pages/TemplatesView'
 
 function RequireAuth() {
   const { data: user, isLoading, isError } = useMe()
@@ -44,6 +45,7 @@ function App() {
           <Route path="/projects/:id" element={<ProjectDetailView />} />
           <Route path="/worklog" element={<WorkLogView />} />
           <Route path="/views" element={<ViewsView />} />
+          <Route path="/templates" element={<TemplatesView />} />
           <Route path="/settings" element={<SettingsView />} />
         </Route>
       </Route>

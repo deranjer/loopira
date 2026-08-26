@@ -10,6 +10,7 @@ import { NewIssueModal } from '../components/NewIssueModal'
 import { MembersSection } from '../components/MembersSection'
 import { DocumentsSection } from '../components/DocumentsSection'
 import { WorkLogSection } from '../components/WorkLogSection'
+import { AgentGuideSection } from '../components/AgentGuideSection'
 import { PRIORITY_META, PROJECT_STATUS_META, PROJECT_STATUS_ORDER } from '../theme'
 
 export function ProjectDetailView() {
@@ -95,6 +96,7 @@ export function ProjectDetailView() {
             <Tabs.List px={12}>
               <Tabs.Tab value="issues">Issues</Tabs.Tab>
               <Tabs.Tab value="worklog">Work Log</Tabs.Tab>
+              <Tabs.Tab value="agent-guide">Agent Guide</Tabs.Tab>
             </Tabs.List>
 
             <Tabs.Panel value="issues" style={{ flex: 1, overflowY: 'auto' }}>
@@ -110,6 +112,10 @@ export function ProjectDetailView() {
 
             <Tabs.Panel value="worklog" style={{ flex: 1, overflowY: 'auto' }}>
               <WorkLogSection projectId={project.id} />
+            </Tabs.Panel>
+
+            <Tabs.Panel value="agent-guide" style={{ flex: 1, overflowY: 'auto' }}>
+              <AgentGuideSection projectId={project.id} />
             </Tabs.Panel>
           </Tabs>
         </div>
@@ -163,6 +169,12 @@ export function ProjectDetailView() {
               onChange={(e) => save({ targetDate: e.currentTarget.value || null })}
             />
           </div>
+
+          {project.templateName && (
+            <Text size="xs" c="dark.4">
+              Stamped from template: {project.templateName}
+            </Text>
+          )}
 
           <MembersSection projectId={project.id} />
           <DocumentsSection projectId={project.id} />

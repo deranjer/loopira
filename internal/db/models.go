@@ -126,7 +126,21 @@ type Project struct {
 	LeadID      pgtype.UUID        `json:"lead_id"`
 	TargetDate  pgtype.Date        `json:"target_date"`
 	Priority    int16              `json:"priority"`
+	TemplateID  pgtype.UUID        `json:"template_id"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+type ProjectGuideFragment struct {
+	ID              pgtype.UUID        `json:"id"`
+	ProjectID       pgtype.UUID        `json:"project_id"`
+	FragmentID      pgtype.UUID        `json:"fragment_id"`
+	Name            string             `json:"name"`
+	Content         string             `json:"content"`
+	BaseVersion     pgtype.Int4        `json:"base_version"`
+	LocallyModified bool               `json:"locally_modified"`
+	Position        int32              `json:"position"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
 type ProjectMember struct {
@@ -152,6 +166,32 @@ type Team struct {
 type TeamMember struct {
 	TeamID pgtype.UUID `json:"team_id"`
 	UserID pgtype.UUID `json:"user_id"`
+}
+
+type Template struct {
+	ID          pgtype.UUID        `json:"id"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	CreatedBy   pgtype.UUID        `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type TemplateFragment struct {
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	Category  pgtype.Text        `json:"category"`
+	Content   string             `json:"content"`
+	Version   int32              `json:"version"`
+	CreatedBy pgtype.UUID        `json:"created_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type TemplateFragmentLink struct {
+	TemplateID pgtype.UUID `json:"template_id"`
+	FragmentID pgtype.UUID `json:"fragment_id"`
+	Position   int32       `json:"position"`
 }
 
 type User struct {

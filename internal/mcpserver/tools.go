@@ -21,6 +21,21 @@ func parseUUID(s string) (pgtype.UUID, error) {
 	return u, err
 }
 
+func nullableUID(u pgtype.UUID) *string {
+	if !u.Valid {
+		return nil
+	}
+	s := u.String()
+	return &s
+}
+
+func nullableText(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	return &t.String
+}
+
 // errorResult reports a tool-level failure. Per the MCP spec this belongs
 // in the result content with IsError set, not as an RPC-level error, so
 // the calling agent can see what went wrong and try something else.
@@ -444,6 +459,109 @@ func (s *toolServer) addWorkLog(ctx context.Context, _ *mcp.CallToolRequest, arg
 	body := dto.WorkLogFromGetRow(row)
 	s.hub.Broadcast(ws.Event{Type: "worklog.created", TeamID: project.TeamID.String(), Payload: body})
 	return nil, body, nil
+}
+
+// loadTemplateFragments fetches and attaches a template's ordered fragment
+// list. Mirrors internal/api's own loadTemplateFragments; not shared
+// directly for the same reason applyIssueLabel isn't — mcpserver can't
+// import internal/api's unexported helpers without reintroducing the
+// import cycle this package's whole existence avoids.
+func (s *toolServer) loadTemplateFragments(ctx context.Context, t *dto.Template, id pgtype.UUID) error {
+	links, err := s.q.ListTemplateLinks(ctx, id)
+	if err != nil {
+		return err
+	}
+	t.Fragments = make([]dto.TemplateFragmentRef, len(links))
+	for i, l := range links {
+		t.Fragments[i] = dto.TemplateFragmentRefFromRow(l)
+	}
+	return nil
+}
+
+func (s *toolServer) listTemplates(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, []dto.Template, error) {
+	rows, err := s.q.ListTemplates(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := make([]dto.Template, len(rows))
+	for i, t := range rows {
+		out[i] = dto.TemplateFromRow(t)
+	}
+	return nil, out, nil
+}
+
+type getTemplateArgs struct {
+	ID string `json:"id" jsonschema:"template id, from list_templates"`
+}
+
+func (s *toolServer) getTemplate(ctx context.Context, _ *mcp.CallToolRequest, args getTemplateArgs) (*mcp.CallToolResult, dto.Template, error) {
+	id, err := parseUUID(args.ID)
+	if err != nil {
+		return errorResult("invalid id %q", args.ID), dto.Template{}, nil
+	}
+	row, err := s.q.GetTemplate(ctx, id)
+	if err != nil {
+		return errorResult("template %q not found", args.ID), dto.Template{}, nil
+	}
+	out := dto.TemplateFromGetRow(row)
+	if err := s.loadTemplateFragments(ctx, &out, id); err != nil {
+		return nil, dto.Template{}, err
+	}
+	return nil, out, nil
+}
+
+func (s *toolServer) listTemplateFragments(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, []dto.TemplateFragment, error) {
+	rows, err := s.q.ListTemplateFragments(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := make([]dto.TemplateFragment, len(rows))
+	for i, f := range rows {
+		out[i] = dto.TemplateFragmentFromRow(f)
+	}
+	return nil, out, nil
+}
+
+type projectGuideResult struct {
+	// TemplateID/TemplateName are also on Project, repeated here since
+	// they're the field an agent asking "what template is this project
+	// on" cares about most.
+	TemplateID   *string                    `json:"templateId"`
+	TemplateName *string                    `json:"templateName"`
+	Fragments    []dto.ProjectGuideFragment `json:"fragments"`
+}
+
+type getProjectGuideArgs struct {
+	ProjectID string `json:"projectId" jsonschema:"project id, from list_projects"`
+}
+
+// getProjectGuide answers "what tech-stack template is this project on,
+// and what does its agent guide say" — the MCP equivalent of the
+// GET /projects/{id}/agents.md REST endpoint, but structured per-fragment
+// (with category/version/divergence metadata) rather than flattened to
+// one markdown blob.
+func (s *toolServer) getProjectGuide(ctx context.Context, _ *mcp.CallToolRequest, args getProjectGuideArgs) (*mcp.CallToolResult, projectGuideResult, error) {
+	projectID, err := parseUUID(args.ProjectID)
+	if err != nil {
+		return errorResult("invalid projectId %q", args.ProjectID), projectGuideResult{}, nil
+	}
+	project, err := s.q.GetProject(ctx, projectID)
+	if err != nil {
+		return errorResult("project %q not found", args.ProjectID), projectGuideResult{}, nil
+	}
+	fragments, err := s.q.ListProjectGuideFragments(ctx, projectID)
+	if err != nil {
+		return nil, projectGuideResult{}, err
+	}
+	out := projectGuideResult{
+		TemplateID:   nullableUID(project.TemplateID),
+		TemplateName: nullableText(project.TemplateName),
+		Fragments:    make([]dto.ProjectGuideFragment, len(fragments)),
+	}
+	for i, f := range fragments {
+		out.Fragments[i] = dto.ProjectGuideFragmentFromRow(f)
+	}
+	return nil, out, nil
 }
 
 const listWorkLogLimit = 50

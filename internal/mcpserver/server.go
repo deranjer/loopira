@@ -83,5 +83,28 @@ func New(q *db.Queries, hub *ws.Hub) *mcp.Server {
 		Description: "List recent work log entries, optionally filtered by project or search text. Useful for catching up on a project's history before adding a new entry.",
 	}, s.listWorkLog)
 
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "get_project_guide",
+		Description: "Get the tech-stack template a project was stamped from (if any) and its full agent guide — the " +
+			"per-fragment stack/conventions content, each showing which base fragment and version it came from and " +
+			"whether it's been locally modified. Call this first when starting work on a project to pick up its " +
+			"stack, conventions, and guardrails.",
+	}, s.getProjectGuide)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "list_templates",
+		Description: "List available tech-stack templates that a project can be stamped from.",
+	}, s.listTemplates)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "get_template",
+		Description: "Get a template's description and its ordered composition of fragments.",
+	}, s.getTemplate)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "list_template_fragments",
+		Description: "List the catalog of reusable guide fragments (building blocks) that templates are composed from.",
+	}, s.listTemplateFragments)
+
 	return server
 }
