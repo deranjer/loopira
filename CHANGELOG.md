@@ -1,3 +1,10 @@
+## [0.3.0](https://github.com/deranjer/loopira/compare/v0.2.1...v0.3.0) (2026-08-26)
+
+### Features
+
+* add Loopira logo mark ([#7](https://github.com/deranjer/loopira/issues/7)) ([1be46a5](https://github.com/deranjer/loopira/commit/1be46a5c3c5a718a8724c948d4f0636026a86c6e))
+* show server version in navbar with GitHub update check ([#6](https://github.com/deranjer/loopira/issues/6)) ([96209db](https://github.com/deranjer/loopira/commit/96209db5832884b24580c0df49a788407dc5de17))
+
 ## [0.2.1](https://github.com/deranjer/loopira/compare/v0.2.0...v0.2.1) (2026-08-26)
 
 ### Bug Fixes
