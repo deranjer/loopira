@@ -48,6 +48,12 @@ export const authApi = {
   logout: () => request<{ status: string }>('/auth/logout', { method: 'POST' }),
 }
 
+export const setupApi = {
+  status: () => request<{ required: boolean }>('/setup/status'),
+  complete: (name: string, email: string, password: string) =>
+    request<User>('/setup', { method: 'POST', body: JSON.stringify({ name, email, password }) }),
+}
+
 export const versionApi = {
   get: () => request<VersionInfo>('/version'),
 }

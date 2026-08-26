@@ -18,8 +18,6 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/loopira?sslmode=disable
       ADDR: ":8080"
-      ADMIN_EMAIL: you@example.com
-      ADMIN_PASSWORD: change-me
     volumes:
       - attachments:/data/attachments
     depends_on:
@@ -62,7 +60,7 @@ migration step. Once it's up:
 Data persists in two named Docker volumes: `db_data` (Postgres) and
 `attachments` (uploaded files).
 
-`ADMIN_EMAIL`/`ADMIN_PASSWORD` seed the initial admin user on first boot —
-see [Configuration](./configuration.md) for the full list of environment
-variables and what happens if you leave `ADMIN_PASSWORD` unset. For pinning
-to a specific version instead of `latest`, see [Deployment](./deployment.md).
+The first time you open the app, it redirects to `/setup`, a one-time wizard
+for creating the admin account — see [Configuration](./configuration.md) for
+details. For pinning to a specific version instead of `latest`, see
+[Deployment](./deployment.md).
