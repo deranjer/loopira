@@ -1,6 +1,7 @@
-import { AppShell as MantineAppShell, Avatar, Menu, Text, UnstyledButton } from '@mantine/core'
+import { AppShell as MantineAppShell, Avatar, Menu, Text, Tooltip, UnstyledButton } from '@mantine/core'
 import { spotlight } from '@mantine/spotlight'
 import {
+  IconArrowUpCircle,
   IconFolder,
   IconLayoutKanban,
   IconListDetails,
@@ -13,7 +14,7 @@ import {
   IconUser,
 } from '@tabler/icons-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useCurrentTeam, useLogout, useMe } from '../lib/api/hooks'
+import { useCurrentTeam, useLogout, useMe, useVersion } from '../lib/api/hooks'
 import { useTeamLiveUpdates } from '../lib/ws'
 import { avatarColor } from '../theme'
 import { CommandPalette } from './CommandPalette'
@@ -39,6 +40,7 @@ function initials(name: string) {
 
 export function AppShell() {
   const { data: me } = useMe()
+  const { data: versionInfo } = useVersion()
   const { team } = useCurrentTeam()
   const logout = useLogout()
   const navigate = useNavigate()
@@ -166,6 +168,29 @@ export function AppShell() {
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>
+
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 10px 2px' }}>
+          {versionInfo?.updateAvailable ? (
+            <Tooltip label={`Update available: ${versionInfo.latestVersion}`} position="top">
+              <UnstyledButton
+                component="a"
+                href={versionInfo.releaseUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--mantine-color-accent-5)' }}
+              >
+                <Text size="xs" c="inherit">
+                  {versionInfo.version}
+                </Text>
+                <IconArrowUpCircle size={13} />
+              </UnstyledButton>
+            </Tooltip>
+          ) : (
+            <Text size="xs" c="dark.4">
+              {versionInfo?.version ?? ''}
+            </Text>
+          )}
+        </div>
       </MantineAppShell.Navbar>
 
       <MantineAppShell.Main bg="dark.7">

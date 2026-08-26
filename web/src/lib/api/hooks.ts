@@ -15,6 +15,7 @@ import {
   type UpdateIssueDetailsInput,
   type UpdateProjectInput,
   usersApi,
+  versionApi,
   viewsApi,
   type WorkLogFilters,
   workLogsApi,
@@ -23,6 +24,15 @@ import type { Issue, ViewDefinition } from './types'
 
 export function useMe() {
   return useQuery({ queryKey: ['me'], queryFn: authApi.me, retry: false })
+}
+
+export function useVersion() {
+  return useQuery({
+    queryKey: ['version'],
+    queryFn: versionApi.get,
+    retry: false,
+    staleTime: 30 * 60 * 1000,
+  })
 }
 
 export function useLogin() {

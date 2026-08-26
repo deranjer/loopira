@@ -1,4 +1,4 @@
-import type { ApiKey, Attachment, Cycle, Issue, Label, NewApiKey, Project, Team, User, View, ViewDefinition, WorkLog, WorkLogSource } from './types'
+import type { ApiKey, Attachment, Cycle, Issue, Label, NewApiKey, Project, Team, User, VersionInfo, View, ViewDefinition, WorkLog, WorkLogSource } from './types'
 
 export class ApiError extends Error {
   status: number
@@ -27,6 +27,10 @@ export const authApi = {
   login: (email: string, password: string) =>
     request<User>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request<{ status: string }>('/auth/logout', { method: 'POST' }),
+}
+
+export const versionApi = {
+  get: () => request<VersionInfo>('/version'),
 }
 
 export const teamsApi = {
