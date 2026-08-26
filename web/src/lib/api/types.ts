@@ -11,6 +11,13 @@ export interface Team {
   key: string
 }
 
+export interface VersionInfo {
+  version: string
+  latestVersion?: string
+  updateAvailable: boolean
+  releaseUrl?: string
+}
+
 export interface Label {
   id: string
   name: string
