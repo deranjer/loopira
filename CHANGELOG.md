@@ -1,3 +1,9 @@
+## [0.5.0](https://github.com/deranjer/loopira/compare/v0.4.0...v0.5.0) (2026-08-26)
+
+### Features
+
+* add first-run /setup wizard, remove env-var admin bootstrap ([#9](https://github.com/deranjer/loopira/issues/9)) ([ad4fc1a](https://github.com/deranjer/loopira/commit/ad4fc1a8ddd207bf9286b9e6d1c5d606fbae6a08))
+
 ## [0.4.0](https://github.com/deranjer/loopira/compare/v0.3.0...v0.4.0) (2026-08-26)
 
 ### Features
