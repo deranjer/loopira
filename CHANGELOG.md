@@ -1,3 +1,9 @@
+## [0.4.0](https://github.com/deranjer/loopira/compare/v0.3.0...v0.4.0) (2026-08-26)
+
+### Features
+
+* composable tech-stack templates for stamping out projects ([#8](https://github.com/deranjer/loopira/issues/8)) ([0f72901](https://github.com/deranjer/loopira/commit/0f7290106f45477afcc847305e6f1c599b5a17c8))
+
 ## [0.3.0](https://github.com/deranjer/loopira/compare/v0.2.1...v0.3.0) (2026-08-26)
 
 ### Features
