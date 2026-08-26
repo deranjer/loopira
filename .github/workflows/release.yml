@@ -2,20 +2,56 @@ name: Release
 
 on:
   push:
-    tags: ['v*.*.*']
+    branches: [master]
   workflow_dispatch:
+    inputs:
+      version:
+        description: Override version tag (leave blank for semantic-release)
 
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.new_release_version }}
+      released: ${{ steps.release.outputs.new_release_published }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install release tooling
+        run: npm ci
+
+      - id: release
+        uses: cycjimmy/semantic-release-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   image:
     name: Build & Push Image
+    needs: release
+    if: needs.release.outputs.released == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    env:
+      VERSION: ${{ needs.release.outputs.version || inputs.version }}
     steps:
       - uses: actions/checkout@v5
 
@@ -32,15 +68,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Parse version
+        id: verparts
+        run: |
+          v="${VERSION#v}"
+          echo "major=${v%%.*}" >> "$GITHUB_OUTPUT"
+          echo "major_minor=${v%.*}" >> "$GITHUB_OUTPUT"
+
       - name: Extract image metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/deranjer/loopira
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=raw,value=v${{ env.VERSION }}
+            type=raw,value=v${{ steps.verparts.outputs.major_minor }}
+            type=raw,value=v${{ steps.verparts.outputs.major }}
             type=sha
 
       - name: Build and push
