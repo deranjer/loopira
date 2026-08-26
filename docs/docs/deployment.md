@@ -30,8 +30,6 @@ drop the `v` prefix:
 docker run -d \
   -p 8080:8080 \
   -e DATABASE_URL="postgres://postgres:postgres@<db-host>:5432/loopira?sslmode=disable" \
-  -e ADMIN_EMAIL="you@example.com" \
-  -e ADMIN_PASSWORD="<a strong password>" \
   -v loopira_attachments:/data/attachments \
   ghcr.io/deranjer/loopira:latest
 ```

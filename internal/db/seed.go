@@ -2,59 +2,50 @@ package db
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
-	"log/slog"
-	"os"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// EnsureSeedData creates the workspace's first team and admin user on the
-// very first boot (when the users table is empty). Self-hosted deployments
-// have no signup flow, so this is the only way in.
-func EnsureSeedData(ctx context.Context, q *Queries) error {
+// SetupRequired reports whether the workspace has never been set up — no
+// users exist yet, so the /setup wizard should run. Self-hosted deployments
+// have no signup flow, so this is the only gate on first-run state; once an
+// admin user exists it can never report true again.
+func SetupRequired(ctx context.Context, q *Queries) (bool, error) {
 	count, err := q.CountUsers(ctx)
 	if err != nil {
-		return fmt.Errorf("counting users: %w", err)
+		return false, fmt.Errorf("counting users: %w", err)
 	}
-	if count > 0 {
-		return nil
-	}
+	return count == 0, nil
+}
 
+// CompleteSetup creates the workspace's first team and admin user. Callers
+// must check SetupRequired first — this does not re-check, so it must only
+// run from the one-time /setup flow while the users table is still empty.
+func CompleteSetup(ctx context.Context, q *Queries, name, email, password string) (User, error) {
 	team, err := q.CreateTeam(ctx, CreateTeamParams{Name: "Engineering", Key: "ENG"})
 	if err != nil {
-		return fmt.Errorf("seeding team: %w", err)
+		return User{}, fmt.Errorf("creating team: %w", err)
 	}
 
-	email := os.Getenv("ADMIN_EMAIL")
-	if email == "" {
-		email = "admin@loopira.local"
-	}
-	password := os.Getenv("ADMIN_PASSWORD")
-	generated := password == ""
-	if generated {
-		password = generateRandomPassword()
-	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("hashing seed password: %w", err)
+		return User{}, fmt.Errorf("hashing password: %w", err)
 	}
 
 	user, err := q.CreateUser(ctx, CreateUserParams{
-		Name:         "Admin",
+		Name:         name,
 		Email:        email,
 		PasswordHash: pgtype.Text{String: string(hash), Valid: true},
 		Role:         "admin",
 	})
 	if err != nil {
-		return fmt.Errorf("seeding admin user: %w", err)
+		return User{}, fmt.Errorf("creating admin user: %w", err)
 	}
 
 	if err := q.AddTeamMember(ctx, AddTeamMemberParams{TeamID: team.ID, UserID: user.ID}); err != nil {
-		return fmt.Errorf("adding admin to seed team: %w", err)
+		return User{}, fmt.Errorf("adding admin to team: %w", err)
 	}
 
 	// Default labels — same name/color pairs as the pulled design's own
@@ -67,21 +58,9 @@ func EnsureSeedData(ctx context.Context, q *Queries) error {
 	}
 	for _, l := range defaultLabels {
 		if _, err := q.CreateLabel(ctx, CreateLabelParams{TeamID: team.ID, Name: l.name, Color: l.color}); err != nil {
-			return fmt.Errorf("seeding label %q: %w", l.name, err)
+			return User{}, fmt.Errorf("seeding label %q: %w", l.name, err)
 		}
 	}
 
-	slog.Info("seeded workspace", "team", team.Name, "adminEmail", email)
-	if generated {
-		slog.Warn("generated admin password — save it, it will not be shown again", "password", password)
-	}
-	return nil
-}
-
-func generateRandomPassword() string {
-	b := make([]byte, 18)
-	if _, err := rand.Read(b); err != nil {
-		panic(err)
-	}
-	return base64.RawURLEncoding.EncodeToString(b)
+	return user, nil
 }

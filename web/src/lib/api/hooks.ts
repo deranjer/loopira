@@ -12,6 +12,7 @@ import {
   projectGuideFragmentsApi,
   projectMembersApi,
   projectsApi,
+  setupApi,
   teamsApi,
   templateFragmentsApi,
   templatesApi,
@@ -52,6 +53,22 @@ export function useLogout() {
   return useMutation({
     mutationFn: authApi.logout,
     onSuccess: () => qc.clear(),
+  })
+}
+
+export function useSetupStatus() {
+  return useQuery({ queryKey: ['setup-status'], queryFn: setupApi.status, retry: false })
+}
+
+export function useCompleteSetup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, email, password }: { name: string; email: string; password: string }) =>
+      setupApi.complete(name, email, password),
+    onSuccess: (user) => {
+      qc.setQueryData(['me'], user)
+      qc.setQueryData(['setup-status'], { required: false })
+    },
   })
 }
 

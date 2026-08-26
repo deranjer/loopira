@@ -65,6 +65,7 @@ func New(pool *pgxpool.Pool, hub *ws.Hub, store storage.Store) *Server {
 	})
 
 	s.registerVersionRoutes()
+	s.registerSetupRoutes()
 	s.registerAuthRoutes()
 	s.registerUserRoutes()
 	s.registerTeamRoutes()

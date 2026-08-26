@@ -47,10 +47,6 @@ func run() error {
 	defer pool.Close()
 	slog.Info("connected to database")
 
-	if err := db.EnsureSeedData(ctx, db.New(pool)); err != nil {
-		return err
-	}
-
 	hub := ws.NewHub()
 
 	scheduler := jobs.NewScheduler()
