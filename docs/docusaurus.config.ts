@@ -7,7 +7,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'Loopira',
   tagline: 'Self-hosted, single-binary Linear-style issue tracker',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/logo.svg',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -57,6 +57,10 @@ const config: Config = {
     },
     navbar: {
       title: 'Loopira',
+      logo: {
+        alt: 'Loopira logo',
+        src: 'img/logo.svg',
+      },
       items: [
         {
           type: 'docSidebar',

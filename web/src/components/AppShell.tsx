@@ -57,7 +57,7 @@ export function AppShell() {
         display="flex"
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
-          <div style={{ width: 26, height: 26, borderRadius: 6, background: 'var(--mantine-color-accent-5)', flexShrink: 0 }} />
+          <img src="/favicon.svg" width={26} height={26} alt="Loopira" style={{ flexShrink: 0 }} />
           <Text fw={600} size="md" c="dark.0">
             {team?.name ?? 'Workspace'}
           </Text>
