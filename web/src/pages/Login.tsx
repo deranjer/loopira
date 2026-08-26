@@ -30,7 +30,7 @@ export function Login() {
         <form onSubmit={form.onSubmit(submit)}>
           <Stack gap="md">
             <div>
-              <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--mantine-color-accent-5)', marginBottom: 14 }} />
+              <img src="/favicon.svg" width={34} height={34} alt="Loopira" style={{ display: 'block', marginBottom: 14 }} />
               <Title order={2} c="dark.0">
                 Sign in to Loopira
               </Title>

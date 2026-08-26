@@ -1,7 +1,13 @@
+<p align="center">
+  <img src="docs/static/img/logo.svg" width="72" height="72" alt="Loopira logo">
+</p>
+
 # Loopira
 
 A self-hosted, single-workspace issue tracker (Linear clone). Architecture and
 feature scope are documented in the plan this scaffold was built from.
+
+📚 **[Documentation](https://deranjer.github.io/loopira/)**
 
 ## Stack
 
