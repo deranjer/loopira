@@ -1,3 +1,9 @@
+## [0.6.0](https://github.com/deranjer/loopira/compare/v0.5.0...v0.6.0) (2026-09-05)
+
+### Features
+
+* **mcp:** support project setup ([#10](https://github.com/deranjer/loopira/issues/10)) ([8979b4a](https://github.com/deranjer/loopira/commit/8979b4aefd8d1f3e93077a201a65485514385549))
+
 ## [0.5.0](https://github.com/deranjer/loopira/compare/v0.4.0...v0.5.0) (2026-08-26)
 
 ### Features
