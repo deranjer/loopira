@@ -58,6 +58,12 @@ func New(q *db.Queries, hub *ws.Hub) *mcp.Server {
 	}, s.listProjects)
 
 	mcp.AddTool(server, &mcp.Tool{
+		Name: "create_project",
+		Description: "Create a project in the workspace. Optionally stamp it from a tech-stack template; " +
+			"use add_project_guide_fragment afterward to attach a standalone catalog fragment. Requires a read-write API key.",
+	}, s.createProject)
+
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "list_cycles",
 		Description: "List cycles (sprints) in the workspace, with completion progress.",
 	}, s.listCycles)
@@ -90,6 +96,12 @@ func New(q *db.Queries, hub *ws.Hub) *mcp.Server {
 			"whether it's been locally modified. Call this first when starting work on a project to pick up its " +
 			"stack, conventions, and guardrails.",
 	}, s.getProjectGuide)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "add_project_guide_fragment",
+		Description: "Attach a catalog guide fragment to a project, or add a custom guide fragment. " +
+			"Requires a read-write API key.",
+	}, s.addProjectGuideFragment)
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "list_templates",

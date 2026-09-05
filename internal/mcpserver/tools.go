@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -362,6 +363,166 @@ func (s *toolServer) listProjects(ctx context.Context, _ *mcp.CallToolRequest, _
 		out[i] = dto.ProjectFromRow(r)
 	}
 	return nil, out, nil
+}
+
+type createProjectArgs struct {
+	Name        string `json:"name" jsonschema:"project name"`
+	Description string `json:"description,omitempty" jsonschema:"project description"`
+	Status      string `json:"status,omitempty" jsonschema:"backlog (default), planned, in_progress, paused, completed, or canceled"`
+	LeadID      string `json:"leadId,omitempty" jsonschema:"project lead user id, from list_users"`
+	Priority    int    `json:"priority,omitempty" jsonschema:"priority level 0 to 4: 0 none (default) 1 urgent 2 high 3 medium 4 low"`
+	TargetDate  string `json:"targetDate,omitempty" jsonschema:"target date in YYYY-MM-DD format"`
+	TemplateID  string `json:"templateId,omitempty" jsonschema:"template id, from list_templates; its fragments are stamped onto the new project"`
+}
+
+var validProjectStatuses = map[string]bool{
+	"backlog": true, "planned": true, "in_progress": true, "paused": true, "completed": true, "canceled": true,
+}
+
+func projectTargetDate(value string) (pgtype.Date, error) {
+	if value == "" {
+		return pgtype.Date{}, nil
+	}
+	parsed, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return pgtype.Date{}, err
+	}
+	return pgtype.Date{Time: parsed, Valid: true}, nil
+}
+
+// createProject deliberately mirrors the REST API's project-creation flow:
+// validate the optional template before inserting, create the project, then
+// copy each template fragment into that project's guide. This gives an agent
+// the same durable snapshot of the stack guide a UI-created project receives.
+func (s *toolServer) createProject(ctx context.Context, _ *mcp.CallToolRequest, args createProjectArgs) (*mcp.CallToolResult, dto.Project, error) {
+	if !auth.CanWrite(ctx) {
+		return errNoWrite, dto.Project{}, nil
+	}
+	if strings.TrimSpace(args.Name) == "" {
+		return errorResult("name is required"), dto.Project{}, nil
+	}
+	status := args.Status
+	if status == "" {
+		status = "backlog"
+	}
+	if !validProjectStatuses[status] {
+		return errorResult("invalid status %q", args.Status), dto.Project{}, nil
+	}
+	if args.Priority < 0 || args.Priority > 4 {
+		return errorResult("priority must be between 0 and 4"), dto.Project{}, nil
+	}
+
+	team, err := s.currentTeam(ctx)
+	if err != nil {
+		return errorResult("%s", err), dto.Project{}, nil
+	}
+	var leadID, templateID pgtype.UUID
+	if args.LeadID != "" {
+		if leadID, err = parseUUID(args.LeadID); err != nil {
+			return errorResult("invalid leadId %q", args.LeadID), dto.Project{}, nil
+		}
+	}
+	if args.TemplateID != "" {
+		if templateID, err = parseUUID(args.TemplateID); err != nil {
+			return errorResult("invalid templateId %q", args.TemplateID), dto.Project{}, nil
+		}
+		if _, err := s.q.GetTemplate(ctx, templateID); err != nil {
+			return errorResult("template %q not found", args.TemplateID), dto.Project{}, nil
+		}
+	}
+	targetDate, err := projectTargetDate(args.TargetDate)
+	if err != nil {
+		return errorResult("invalid targetDate %q; expected YYYY-MM-DD", args.TargetDate), dto.Project{}, nil
+	}
+
+	var stampFragments []db.ListTemplateFragmentsForStampRow
+	if templateID.Valid {
+		stampFragments, err = s.q.ListTemplateFragmentsForStamp(ctx, templateID)
+		if err != nil {
+			return nil, dto.Project{}, err
+		}
+	}
+	created, err := s.q.CreateProject(ctx, db.CreateProjectParams{
+		TeamID:      team.ID,
+		Name:        args.Name,
+		Description: pgtype.Text{String: args.Description, Valid: args.Description != ""},
+		Status:      status,
+		LeadID:      leadID,
+		Priority:    int16(args.Priority),
+		TargetDate:  targetDate,
+		TemplateID:  templateID,
+	})
+	if err != nil {
+		return nil, dto.Project{}, err
+	}
+	if leadID.Valid {
+		if err := s.q.AddProjectMember(ctx, db.AddProjectMemberParams{ProjectID: created.ID, UserID: leadID}); err != nil {
+			return nil, dto.Project{}, err
+		}
+	}
+	for _, fragment := range stampFragments {
+		if _, err := s.q.AddProjectGuideFragment(ctx, db.AddProjectGuideFragmentParams{
+			ProjectID:   created.ID,
+			FragmentID:  fragment.ID,
+			Name:        fragment.Name,
+			Content:     fragment.Content,
+			BaseVersion: pgtype.Int4{Int32: fragment.Version, Valid: true},
+		}); err != nil {
+			return nil, dto.Project{}, err
+		}
+	}
+	row, err := s.q.GetProject(ctx, created.ID)
+	if err != nil {
+		return nil, dto.Project{}, err
+	}
+	out := dto.ProjectFromGetRow(row)
+	s.hub.Broadcast(ws.Event{Type: "project.created", TeamID: team.ID.String(), Payload: out})
+	return nil, out, nil
+}
+
+type addProjectGuideFragmentArgs struct {
+	ProjectID  string `json:"projectId" jsonschema:"project id, from list_projects"`
+	FragmentID string `json:"fragmentId,omitempty" jsonschema:"catalog fragment id, from list_template_fragments"`
+	Name       string `json:"name,omitempty" jsonschema:"name for a custom guide fragment; required when fragmentId is omitted"`
+	Content    string `json:"content,omitempty" jsonschema:"content for a custom guide fragment"`
+}
+
+func (s *toolServer) addProjectGuideFragment(ctx context.Context, _ *mcp.CallToolRequest, args addProjectGuideFragmentArgs) (*mcp.CallToolResult, dto.ProjectGuideFragment, error) {
+	if !auth.CanWrite(ctx) {
+		return errNoWrite, dto.ProjectGuideFragment{}, nil
+	}
+	projectID, err := parseUUID(args.ProjectID)
+	if err != nil {
+		return errorResult("invalid projectId %q", args.ProjectID), dto.ProjectGuideFragment{}, nil
+	}
+	if _, err := s.q.GetProject(ctx, projectID); err != nil {
+		return errorResult("project %q not found", args.ProjectID), dto.ProjectGuideFragment{}, nil
+	}
+
+	var fragmentID pgtype.UUID
+	var baseVersion pgtype.Int4
+	name, content := args.Name, args.Content
+	if args.FragmentID != "" {
+		if fragmentID, err = parseUUID(args.FragmentID); err != nil {
+			return errorResult("invalid fragmentId %q", args.FragmentID), dto.ProjectGuideFragment{}, nil
+		}
+		fragment, err := s.q.GetTemplateFragment(ctx, fragmentID)
+		if err != nil {
+			return errorResult("fragment %q not found", args.FragmentID), dto.ProjectGuideFragment{}, nil
+		}
+		name, content = fragment.Name, fragment.Content
+		baseVersion = pgtype.Int4{Int32: fragment.Version, Valid: true}
+	} else if strings.TrimSpace(name) == "" {
+		return errorResult("name is required when fragmentId is omitted"), dto.ProjectGuideFragment{}, nil
+	}
+
+	created, err := s.q.AddProjectGuideFragment(ctx, db.AddProjectGuideFragmentParams{
+		ProjectID: projectID, FragmentID: fragmentID, Name: name, Content: content, BaseVersion: baseVersion,
+	})
+	if err != nil {
+		return nil, dto.ProjectGuideFragment{}, err
+	}
+	return nil, dto.ProjectGuideFragmentFromRow(created), nil
 }
 
 func (s *toolServer) listCycles(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, []dto.Cycle, error) {

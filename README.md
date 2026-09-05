@@ -67,10 +67,11 @@ web/                  React/Vite/TypeScript frontend
 ## Connecting an AI agent (MCP)
 
 Loopira exposes an MCP (Model Context Protocol) server at `/mcp` so agents
-like Claude, Cursor, or ChatGPT can read and manage issues directly.
+like Claude, Cursor, or ChatGPT can create projects, apply stack guidance, and
+manage issues directly.
 
 1. In the app, go to **Settings → API Keys → New API key**. Choose
-   read-write (can create/edit issues) or read-only. The plaintext key is
+   read-write (can create projects and manage issues) or read-only. The plaintext key is
    shown once — copy it.
 2. Connect your MCP client. For Claude Code:
    ```sh
