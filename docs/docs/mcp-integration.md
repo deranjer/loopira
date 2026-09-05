@@ -8,10 +8,15 @@ Loopira exposes an MCP ([Model Context Protocol](https://modelcontextprotocol.io
 server at `/mcp` so agents like Claude, Cursor, or ChatGPT can read and
 manage issues directly.
 
+With a read-write key, an agent can also create projects, stamp a project from
+a tech-stack template, and attach a standalone guide fragment from the catalog.
+For example, it can create a project, add the `Go/Wails App` fragment to its
+agent guide, then create the project's roadmap issues.
+
 ## 1. Create an API key
 
 In the app, go to **Settings → API Keys → New API key**. Choose read-write
-(can create/edit issues) or read-only. The plaintext key is shown once —
+(can create projects and manage issues) or read-only. The plaintext key is shown once —
 copy it before leaving the page.
 
 ## 2. Connect your MCP client

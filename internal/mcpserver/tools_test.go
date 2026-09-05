@@ -2,6 +2,7 @@ package mcpserver
 
 import (
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -13,6 +14,33 @@ func uuidFor(t *testing.T, s string) pgtype.UUID {
 		t.Fatalf("invalid test uuid %q: %v", s, err)
 	}
 	return u
+}
+
+func TestProjectTargetDate(t *testing.T) {
+	got, err := projectTargetDate("2026-09-04")
+	if err != nil {
+		t.Fatalf("projectTargetDate: %v", err)
+	}
+	want := time.Date(2026, 9, 4, 0, 0, 0, 0, time.UTC)
+	if !got.Valid || !got.Time.Equal(want) {
+		t.Errorf("got %#v, want valid date %s", got, want)
+	}
+}
+
+func TestProjectTargetDateAllowsEmptyValue(t *testing.T) {
+	got, err := projectTargetDate("")
+	if err != nil {
+		t.Fatalf("projectTargetDate: %v", err)
+	}
+	if got.Valid {
+		t.Errorf("got %#v, want invalid date", got)
+	}
+}
+
+func TestProjectTargetDateRejectsInvalidValue(t *testing.T) {
+	if _, err := projectTargetDate("September 4"); err == nil {
+		t.Fatal("projectTargetDate returned nil error for invalid date")
+	}
 }
 
 func TestMergeOptionalRefNilLeavesUnchanged(t *testing.T) {
