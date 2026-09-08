@@ -186,6 +186,14 @@ export function useIssue(id: string | undefined) {
   })
 }
 
+export function useIssueHistory(id: string | undefined) {
+  return useQuery({
+    queryKey: ['issueHistory', id],
+    queryFn: () => issuesApi.history(id!),
+    enabled: !!id,
+  })
+}
+
 export function useCreateIssue() {
   const qc = useQueryClient()
   return useMutation({
@@ -215,7 +223,11 @@ export function useUpdateIssueStatus() {
     onError: (_err, _vars, context) => {
       context?.previous.forEach(([key, data]) => qc.setQueryData(key, data))
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['issues'] }),
+    onSettled: (_data, _error, { id }) => {
+      qc.invalidateQueries({ queryKey: ['issues'] })
+      qc.invalidateQueries({ queryKey: ['issueHistory', id] })
+      qc.invalidateQueries({ queryKey: ['issue', id] })
+    },
   })
 }
 
@@ -364,6 +376,7 @@ export function useUpdateIssueDetails() {
       issuesApi.updateDetails(id, input),
     onSuccess: (issue) => {
       qc.invalidateQueries({ queryKey: ['issues'] })
+      qc.invalidateQueries({ queryKey: ['issueHistory', issue.id] })
       qc.setQueryData(['issue', issue.id], issue)
     },
   })

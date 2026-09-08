@@ -13,6 +13,7 @@ import (
 	"github.com/deranjer/loopira/internal/auth"
 	"github.com/deranjer/loopira/internal/db"
 	"github.com/deranjer/loopira/internal/dto"
+	"github.com/deranjer/loopira/internal/issuehistory"
 	"github.com/deranjer/loopira/internal/ws"
 )
 
@@ -160,6 +161,26 @@ func (s *toolServer) getIssue(ctx context.Context, _ *mcp.CallToolRequest, args 
 	return nil, dto.IssueFromGetRow(row), nil
 }
 
+func (s *toolServer) getIssueHistory(ctx context.Context, _ *mcp.CallToolRequest, args getIssueArgs) (*mcp.CallToolResult, []dto.IssueHistoryEntry, error) {
+	team, err := s.currentTeam(ctx)
+	if err != nil {
+		return errorResult("%s", err), nil, nil
+	}
+	issue, err := s.resolveIssue(ctx, team.ID, args.ID)
+	if err != nil {
+		return errorResult("issue %q not found", args.ID), nil, nil
+	}
+	rows, err := s.q.ListIssueHistory(ctx, issue.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := make([]dto.IssueHistoryEntry, len(rows))
+	for i, row := range rows {
+		out[i] = dto.IssueHistoryFromRow(row)
+	}
+	return nil, out, nil
+}
+
 // applyIssueLabel replaces an issue's label set with zero or one label —
 // the UI only ever shows a single label per issue even though the schema
 // supports many-to-many via issue_labels. Mirrors internal/api's own
@@ -231,6 +252,9 @@ func (s *toolServer) createIssue(ctx context.Context, _ *mcp.CallToolRequest, ar
 	if err := s.applyIssueLabel(ctx, created.ID, args.LabelID); err != nil {
 		return errorResult("%s", err), dto.Issue{}, nil
 	}
+	if err := issuehistory.Record(ctx, s.q, created.ID, createdBy, "created", nil); err != nil {
+		return nil, dto.Issue{}, err
+	}
 	return s.broadcastAndReturn(ctx, created.ID, team.ID, "issue.created")
 }
 
@@ -261,6 +285,20 @@ func (s *toolServer) updateIssueStatus(ctx context.Context, _ *mcp.CallToolReque
 	updated, err := s.q.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{ID: issue.ID, Status: args.Status})
 	if err != nil {
 		return nil, dto.Issue{}, err
+	}
+	after, err := s.q.GetIssue(ctx, updated.ID)
+	if err != nil {
+		return nil, dto.Issue{}, err
+	}
+	userIDStr, _ := auth.UserID(ctx)
+	actorID, err := parseUUID(userIDStr)
+	if err != nil {
+		return errorResult("could not resolve caller"), dto.Issue{}, nil
+	}
+	if changes := issuehistory.Diff(issue, after); len(changes) > 0 {
+		if err := issuehistory.Record(ctx, s.q, updated.ID, actorID, "updated", changes); err != nil {
+			return nil, dto.Issue{}, err
+		}
 	}
 	return s.broadcastAndReturn(ctx, updated.ID, team.ID, "issue.updated")
 }
@@ -322,6 +360,20 @@ func (s *toolServer) updateIssue(ctx context.Context, _ *mcp.CallToolRequest, ar
 	if args.LabelID != nil {
 		if err := s.applyIssueLabel(ctx, updated.ID, *args.LabelID); err != nil {
 			return errorResult("%s", err), dto.Issue{}, nil
+		}
+	}
+	after, err := s.q.GetIssue(ctx, updated.ID)
+	if err != nil {
+		return nil, dto.Issue{}, err
+	}
+	userIDStr, _ := auth.UserID(ctx)
+	actorID, err := parseUUID(userIDStr)
+	if err != nil {
+		return errorResult("could not resolve caller"), dto.Issue{}, nil
+	}
+	if changes := issuehistory.Diff(current, after); len(changes) > 0 {
+		if err := issuehistory.Record(ctx, s.q, updated.ID, actorID, "updated", changes); err != nil {
+			return nil, dto.Issue{}, err
 		}
 	}
 	return s.broadcastAndReturn(ctx, updated.ID, team.ID, "issue.updated")

@@ -37,6 +37,11 @@ func New(q *db.Queries, hub *ws.Hub) *mcp.Server {
 	}, s.getIssue)
 
 	mcp.AddTool(server, &mcp.Tool{
+		Name:        "get_issue_history",
+		Description: "List every recorded change to an issue, including who made it and when.",
+	}, s.getIssueHistory)
+
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "create_issue",
 		Description: "Create a new issue. Requires a read-write API key.",
 	}, s.createIssue)

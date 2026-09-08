@@ -80,6 +80,15 @@ type Issue struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type IssueHistory struct {
+	ID        pgtype.UUID        `json:"id"`
+	IssueID   pgtype.UUID        `json:"issue_id"`
+	ActorID   pgtype.UUID        `json:"actor_id"`
+	Action    string             `json:"action"`
+	Changes   []byte             `json:"changes"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type IssueLabel struct {
 	IssueID pgtype.UUID `json:"issue_id"`
 	LabelID pgtype.UUID `json:"label_id"`

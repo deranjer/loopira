@@ -11,6 +11,7 @@ import (
 	"github.com/deranjer/loopira/internal/auth"
 	"github.com/deranjer/loopira/internal/db"
 	"github.com/deranjer/loopira/internal/dto"
+	"github.com/deranjer/loopira/internal/issuehistory"
 	"github.com/deranjer/loopira/internal/ws"
 )
 
@@ -34,6 +35,10 @@ type getIssueInput struct {
 
 type issueOutput struct {
 	Body dto.Issue
+}
+
+type issueHistoryOutput struct {
+	Body []dto.IssueHistoryEntry
 }
 
 type createIssueInput struct {
@@ -156,6 +161,32 @@ func (s *Server) registerIssueRoutes() {
 	})
 
 	huma.Register(s.humaAPI, huma.Operation{
+		OperationID: "list-issue-history",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/issues/{id}/history",
+		Summary:     "List the complete audit history for an issue",
+		Tags:        []string{"Issues"},
+		Middlewares: s.protected(),
+	}, func(ctx context.Context, input *getIssueInput) (*issueHistoryOutput, error) {
+		id, err := mustUUID(input.ID)
+		if err != nil {
+			return nil, huma.Error400BadRequest("invalid id")
+		}
+		if _, err := s.q.GetIssue(ctx, id); err != nil {
+			return nil, huma.Error404NotFound("issue not found")
+		}
+		rows, err := s.q.ListIssueHistory(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out := &issueHistoryOutput{Body: make([]dto.IssueHistoryEntry, len(rows))}
+		for i, row := range rows {
+			out.Body[i] = dto.IssueHistoryFromRow(row)
+		}
+		return out, nil
+	})
+
+	huma.Register(s.humaAPI, huma.Operation{
 		OperationID: "get-issue",
 		Method:      http.MethodGet,
 		Path:        "/api/v1/issues/{id}",
@@ -217,6 +248,9 @@ func (s *Server) registerIssueRoutes() {
 		if err := s.applyIssueLabel(ctx, created.ID, input.Body.LabelID); err != nil {
 			return nil, err
 		}
+		if err := issuehistory.Record(ctx, s.q, created.ID, createdBy, "created", nil); err != nil {
+			return nil, err
+		}
 		row, err := s.q.GetIssue(ctx, created.ID)
 		if err != nil {
 			return nil, err
@@ -241,6 +275,10 @@ func (s *Server) registerIssueRoutes() {
 		if err != nil {
 			return nil, huma.Error400BadRequest("invalid id")
 		}
+		before, err := s.q.GetIssue(ctx, id)
+		if err != nil {
+			return nil, huma.Error404NotFound("issue not found")
+		}
 		updated, err := s.q.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{ID: id, Status: input.Body.Status})
 		if err != nil {
 			return nil, huma.Error404NotFound("issue not found")
@@ -250,6 +288,16 @@ func (s *Server) registerIssueRoutes() {
 			return nil, err
 		}
 		body := dto.IssueFromGetRow(row)
+		userIDStr, _ := auth.UserID(ctx)
+		actorID, err := mustUUID(userIDStr)
+		if err != nil {
+			return nil, huma.Error401Unauthorized("login required")
+		}
+		if changes := issuehistory.Diff(before, row); len(changes) > 0 {
+			if err := issuehistory.Record(ctx, s.q, id, actorID, "updated", changes); err != nil {
+				return nil, err
+			}
+		}
 		s.hub.Broadcast(ws.Event{Type: "issue.updated", TeamID: uid(updated.TeamID), Payload: body})
 		return &issueOutput{Body: body}, nil
 	})
@@ -268,6 +316,10 @@ func (s *Server) registerIssueRoutes() {
 		id, err := mustUUID(input.ID)
 		if err != nil {
 			return nil, huma.Error400BadRequest("invalid id")
+		}
+		before, err := s.q.GetIssue(ctx, id)
+		if err != nil {
+			return nil, huma.Error404NotFound("issue not found")
 		}
 		assigneeID, err := optionalUUID(input.Body.AssigneeID)
 		if err != nil {
@@ -301,6 +353,16 @@ func (s *Server) registerIssueRoutes() {
 			return nil, err
 		}
 		body := dto.IssueFromGetRow(row)
+		userIDStr, _ := auth.UserID(ctx)
+		actorID, err := mustUUID(userIDStr)
+		if err != nil {
+			return nil, huma.Error401Unauthorized("login required")
+		}
+		if changes := issuehistory.Diff(before, row); len(changes) > 0 {
+			if err := issuehistory.Record(ctx, s.q, id, actorID, "updated", changes); err != nil {
+				return nil, err
+			}
+		}
 		s.hub.Broadcast(ws.Event{Type: "issue.updated", TeamID: uid(updated.TeamID), Payload: body})
 		return &issueOutput{Body: body}, nil
 	})

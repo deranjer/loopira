@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Avatar, ColorSwatch, Drawer, Group, Select, Stack, Text, Textarea, TextInput } from '@mantine/core'
+import { Avatar, ColorSwatch, Drawer, Group, Select, Stack, Tabs, Text, Textarea, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import {
   useIssue,
@@ -10,6 +10,7 @@ import {
   useUsers,
 } from '../lib/api/hooks'
 import { PRIORITY_META, STATUS_META, STATUS_ORDER, avatarColor } from '../theme'
+import { IssueHistory } from './IssueHistory'
 
 const STATUS_OPTIONS = STATUS_ORDER.map((s) => ({ value: s, label: STATUS_META[s].label }))
 const PRIORITY_OPTIONS = PRIORITY_META.map((p, i) => ({ value: String(i), label: p.label }))
@@ -99,25 +100,31 @@ export function IssueDetailPanel({
       title={<Text size="sm" c="dark.3">{issue.identifier}</Text>}
       styles={{ content: { background: '#0e0f11' }, header: { background: '#0e0f11' } }}
     >
-      <Stack gap="lg">
-        <TextInput
-          value={form.values.title}
-          onChange={(e) => form.setFieldValue('title', e.currentTarget.value)}
-          onBlur={save}
-          variant="unstyled"
-          styles={{ input: { fontSize: 22, fontWeight: 600, color: '#f2f3f4' } }}
-        />
-        <Textarea
-          value={form.values.description}
-          onChange={(e) => form.setFieldValue('description', e.currentTarget.value)}
-          onBlur={save}
-          autosize
-          minRows={3}
-          variant="unstyled"
-          styles={{ input: { fontSize: 15, color: '#a9adb3', lineHeight: 1.6 } }}
-        />
+      <Tabs defaultValue="details">
+        <Tabs.List>
+          <Tabs.Tab value="details">Details</Tabs.Tab>
+          <Tabs.Tab value="history">History</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="details" pt="lg">
+          <Stack gap="lg">
+            <TextInput
+              value={form.values.title}
+              onChange={(e) => form.setFieldValue('title', e.currentTarget.value)}
+              onBlur={save}
+              variant="unstyled"
+              styles={{ input: { fontSize: 22, fontWeight: 600, color: '#f2f3f4' } }}
+            />
+            <Textarea
+              value={form.values.description}
+              onChange={(e) => form.setFieldValue('description', e.currentTarget.value)}
+              onBlur={save}
+              autosize
+              minRows={3}
+              variant="unstyled"
+              styles={{ input: { fontSize: 15, color: '#a9adb3', lineHeight: 1.6 } }}
+            />
 
-        <Stack gap="md" style={{ borderTop: '1px solid #1d1e21', paddingTop: 20 }}>
+            <Stack gap="md" style={{ borderTop: '1px solid #1d1e21', paddingTop: 20 }}>
           <Select
             label="Status"
             data={STATUS_OPTIONS}
@@ -213,8 +220,13 @@ export function IssueDetailPanel({
               })
             }}
           />
-        </Stack>
-      </Stack>
+            </Stack>
+          </Stack>
+        </Tabs.Panel>
+        <Tabs.Panel value="history" pt="sm">
+          <IssueHistory issueId={issue.id} users={users} projects={projects} labels={labels} />
+        </Tabs.Panel>
+      </Tabs>
     </Drawer>
   )
 }
