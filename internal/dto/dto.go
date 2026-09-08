@@ -88,6 +88,28 @@ type Issue struct {
 	UpdatedAt    string      `json:"updatedAt"`
 }
 
+type IssueHistoryEntry struct {
+	ID        string          `json:"id"`
+	IssueID   string          `json:"issueId"`
+	ActorID   *string         `json:"actorId"`
+	ActorName string          `json:"actorName"`
+	Action    string          `json:"action"`
+	Changes   json.RawMessage `json:"changes"`
+	CreatedAt string          `json:"createdAt"`
+}
+
+func IssueHistoryFromRow(r db.ListIssueHistoryRow) IssueHistoryEntry {
+	return IssueHistoryEntry{
+		ID:        uid(r.ID),
+		IssueID:   uid(r.IssueID),
+		ActorID:   nullableUID(r.ActorID),
+		ActorName: r.ActorName,
+		Action:    r.Action,
+		Changes:   json.RawMessage(r.Changes),
+		CreatedAt: ts(r.CreatedAt).Format(TimeFormat),
+	}
+}
+
 func IssueFromListRow(r db.ListIssuesRow) Issue {
 	i := Issue{
 		ID:           uid(r.ID),

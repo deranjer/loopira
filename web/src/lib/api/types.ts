@@ -185,3 +185,18 @@ export interface Issue {
   createdAt: string
   updatedAt: string
 }
+
+export interface IssueHistoryChange {
+  from: string | number | null
+  to: string | number | null
+}
+
+export interface IssueHistoryEntry {
+  id: string
+  issueId: string
+  actorId: string | null
+  actorName: string
+  action: 'created' | 'updated'
+  changes: Record<string, IssueHistoryChange>
+  createdAt: string
+}
