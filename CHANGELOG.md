@@ -1,3 +1,9 @@
+## [0.7.0](https://github.com/deranjer/loopira/compare/v0.6.0...v0.7.0) (2026-09-08)
+
+### Features
+
+* add project issue discovery and audit history ([#11](https://github.com/deranjer/loopira/issues/11)) ([b11ad9a](https://github.com/deranjer/loopira/commit/b11ad9ae03c45c222f688ac73faddb4467a042f4)), closes [#10](https://github.com/deranjer/loopira/issues/10)
+
 ## [0.6.0](https://github.com/deranjer/loopira/compare/v0.5.0...v0.6.0) (2026-09-05)
 
 ### Features
