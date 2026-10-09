@@ -593,3 +593,80 @@ func ProjectGuideFragmentFromRow(f db.ProjectGuideFragment) ProjectGuideFragment
 		UpdatedAt:       ts(f.UpdatedAt).Format(TimeFormat),
 	}
 }
+
+// IssueSummary is the compact list form of an issue for agent clients:
+// no description, timestamps, or ids beyond the human identifier (which
+// every issue-taking tool accepts).
+type IssueSummary struct {
+	Identifier string `json:"identifier"`
+	Title      string `json:"title"`
+	Status     string `json:"status"`
+	Priority   int16  `json:"priority"`
+	Assignee   string `json:"assignee,omitempty"`
+	Project    string `json:"project,omitempty"`
+	Label      string `json:"label,omitempty"`
+	Blocked    bool   `json:"blocked,omitempty"`
+}
+
+func IssueSummaryFromListRow(r db.ListIssuesRow) IssueSummary {
+	s := IssueSummary{
+		Identifier: fmt.Sprintf("%s-%d", r.TeamKey, r.Number),
+		Title:      r.Title,
+		Status:     r.Status,
+		Priority:   r.Priority,
+		Label:      r.LabelName,
+		Blocked:    r.Blocked,
+	}
+	if r.AssigneeName.Valid {
+		s.Assignee = r.AssigneeName.String
+	}
+	if r.ProjectName.Valid {
+		s.Project = r.ProjectName.String
+	}
+	return s
+}
+
+// WorkLogPreviewChars caps the body excerpt in WorkLogSummary.
+const WorkLogPreviewChars = 240
+
+// WorkLogSummary is the compact list form of a work log entry.
+type WorkLogSummary struct {
+	ID        string `json:"id"`
+	Project   string `json:"project"`
+	Author    string `json:"author"`
+	Source    string `json:"source"`
+	Title     string `json:"title"`
+	Preview   string `json:"preview,omitempty"`
+	Truncated bool   `json:"truncated,omitempty"`
+	CreatedAt string `json:"createdAt"`
+}
+
+func WorkLogSummaryFromGlobalRow(w db.ListWorkLogsRow) WorkLogSummary {
+	preview, truncated := w.Body, false
+	if r := []rune(preview); len(r) > WorkLogPreviewChars {
+		preview, truncated = string(r[:WorkLogPreviewChars])+"…", true
+	}
+	return WorkLogSummary{
+		ID:        uid(w.ID),
+		Project:   w.ProjectName,
+		Author:    w.AuthorName,
+		Source:    w.Source,
+		Title:     w.Title,
+		Preview:   preview,
+		Truncated: truncated,
+		CreatedAt: ts(w.CreatedAt).Format(TimeFormat),
+	}
+}
+
+// TemplateFragmentSummary is the catalog form of a fragment: enough to
+// pick one, without its (often multi-KB) content.
+type TemplateFragmentSummary struct {
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Category *string `json:"category"`
+	Version  int     `json:"version"`
+}
+
+func TemplateFragmentSummaryFromRow(f db.ListTemplateFragmentsRow) TemplateFragmentSummary {
+	return TemplateFragmentSummary{ID: uid(f.ID), Name: f.Name, Category: nullableText(f.Category), Version: int(f.Version)}
+}

@@ -164,3 +164,25 @@ func TestIssueLinksFromRowsGroupsByKind(t *testing.T) {
 		t.Errorf("blocks should be an empty non-nil slice, got %#v", got.Blocks)
 	}
 }
+
+func TestWorkLogSummaryTruncatesLongBodies(t *testing.T) {
+	long := ""
+	for i := 0; i < WorkLogPreviewChars+50; i++ {
+		long += "é"
+	}
+	got := WorkLogSummaryFromGlobalRow(db.ListWorkLogsRow{Title: "t", Body: long})
+	if !got.Truncated || len([]rune(got.Preview)) != WorkLogPreviewChars+1 {
+		t.Errorf("preview len %d truncated=%v", len([]rune(got.Preview)), got.Truncated)
+	}
+	short := WorkLogSummaryFromGlobalRow(db.ListWorkLogsRow{Title: "t", Body: "brief"})
+	if short.Truncated || short.Preview != "brief" {
+		t.Errorf("short body altered: %+v", short)
+	}
+}
+
+func TestIssueSummaryOmitsHeavyFields(t *testing.T) {
+	got := IssueSummaryFromListRow(db.ListIssuesRow{TeamKey: "ENG", Number: 7, Title: "x", Description: "long text", Status: "todo"})
+	if got.Identifier != "ENG-7" {
+		t.Errorf("identifier = %q", got.Identifier)
+	}
+}
