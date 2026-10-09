@@ -1,3 +1,14 @@
+## [0.8.0](https://github.com/deranjer/loopira/compare/v0.7.0...v0.8.0) (2026-10-09)
+
+### Features
+
+* comments on issues (ENG-70) ([#12](https://github.com/deranjer/loopira/issues/12)) ([d4d62db](https://github.com/deranjer/loopira/commit/d4d62dbf9702202a049c7d2d936dcd359e464ee7)), closes [#13](https://github.com/deranjer/loopira/issues/13) [#14](https://github.com/deranjer/loopira/issues/14)
+* sub-issues and blocking dependencies (ENG-63) ([#13](https://github.com/deranjer/loopira/issues/13)) ([fd79a3d](https://github.com/deranjer/loopira/commit/fd79a3d132d0253751789a43e729a839ae0268a1))
+
+### Performance Improvements
+
+* **mcp:** cut token cost; add manual Blocked status ([#14](https://github.com/deranjer/loopira/issues/14)) ([2b28047](https://github.com/deranjer/loopira/commit/2b28047179702221d747956347a4f2c7287dd89b))
+
 ## [0.7.0](https://github.com/deranjer/loopira/compare/v0.6.0...v0.7.0) (2026-09-08)
 
 ### Features
