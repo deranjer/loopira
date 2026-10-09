@@ -186,3 +186,10 @@ func TestIssueSummaryOmitsHeavyFields(t *testing.T) {
 		t.Errorf("identifier = %q", got.Identifier)
 	}
 }
+
+func TestIssueSummaryFromGetRowMatchesListForm(t *testing.T) {
+	got := IssueSummaryFromGetRow(db.GetIssueRow{TeamKey: "ENG", Number: 9, Title: "x", Status: "blocked", Blocked: true})
+	if got.Identifier != "ENG-9" || got.Status != "blocked" || !got.Blocked {
+		t.Errorf("unexpected summary: %+v", got)
+	}
+}

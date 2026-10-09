@@ -73,7 +73,7 @@ func New(q *db.Queries, hub *ws.Hub) *mcp.Server {
 
 	addTool(server, &mcp.Tool{
 		Name:        "create_issue",
-		Description: "Create a new issue. Requires a read-write API key.",
+		Description: "Create a new issue; returns a compact summary (use get_issue for full detail). Requires a read-write API key.",
 	}, s.createIssue)
 
 	addTool(server, &mcp.Tool{

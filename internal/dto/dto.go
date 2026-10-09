@@ -670,3 +670,7 @@ type TemplateFragmentSummary struct {
 func TemplateFragmentSummaryFromRow(f db.ListTemplateFragmentsRow) TemplateFragmentSummary {
 	return TemplateFragmentSummary{ID: uid(f.ID), Name: f.Name, Category: nullableText(f.Category), Version: int(f.Version)}
 }
+
+func IssueSummaryFromGetRow(r db.GetIssueRow) IssueSummary {
+	return IssueSummaryFromListRow(db.ListIssuesRow(r))
+}

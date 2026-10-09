@@ -430,31 +430,31 @@ type createIssueArgs struct {
 	LabelID     string `json:"labelId,omitempty" jsonschema:"label id, from list_labels"`
 }
 
-func (s *toolServer) createIssue(ctx context.Context, _ *mcp.CallToolRequest, args createIssueArgs) (*mcp.CallToolResult, dto.Issue, error) {
+func (s *toolServer) createIssue(ctx context.Context, _ *mcp.CallToolRequest, args createIssueArgs) (*mcp.CallToolResult, dto.IssueSummary, error) {
 	if !auth.CanWrite(ctx) {
-		return errNoWrite, dto.Issue{}, nil
+		return errNoWrite, dto.IssueSummary{}, nil
 	}
 	if strings.TrimSpace(args.Title) == "" {
-		return errorResult("title is required"), dto.Issue{}, nil
+		return errorResult("title is required"), dto.IssueSummary{}, nil
 	}
 	team, err := s.currentTeam(ctx)
 	if err != nil {
-		return errorResult("%s", err), dto.Issue{}, nil
+		return errorResult("%s", err), dto.IssueSummary{}, nil
 	}
 	userIDStr, _ := auth.UserID(ctx)
 	createdBy, err := parseUUID(userIDStr)
 	if err != nil {
-		return errorResult("could not resolve caller"), dto.Issue{}, nil
+		return errorResult("could not resolve caller"), dto.IssueSummary{}, nil
 	}
 	var assigneeID, projectID pgtype.UUID
 	if args.AssigneeID != "" {
 		if assigneeID, err = parseUUID(args.AssigneeID); err != nil {
-			return errorResult("invalid assigneeId %q", args.AssigneeID), dto.Issue{}, nil
+			return errorResult("invalid assigneeId %q", args.AssigneeID), dto.IssueSummary{}, nil
 		}
 	}
 	if args.ProjectID != "" {
 		if projectID, err = parseUUID(args.ProjectID); err != nil {
-			return errorResult("invalid projectId %q", args.ProjectID), dto.Issue{}, nil
+			return errorResult("invalid projectId %q", args.ProjectID), dto.IssueSummary{}, nil
 		}
 	}
 	created, err := s.q.CreateIssue(ctx, db.CreateIssueParams{
@@ -467,13 +467,13 @@ func (s *toolServer) createIssue(ctx context.Context, _ *mcp.CallToolRequest, ar
 		CreatedBy:   createdBy,
 	})
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	if err := s.applyIssueLabel(ctx, created.ID, args.LabelID); err != nil {
-		return errorResult("%s", err), dto.Issue{}, nil
+		return errorResult("%s", err), dto.IssueSummary{}, nil
 	}
 	if err := issuehistory.Record(ctx, s.q, created.ID, createdBy, "created", nil); err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	return s.broadcastAndReturn(ctx, created.ID, team.ID, "issue.created")
 }
@@ -487,37 +487,37 @@ var validStatuses = map[string]bool{
 	"backlog": true, "todo": true, "in_progress": true, "blocked": true, "done": true, "canceled": true,
 }
 
-func (s *toolServer) updateIssueStatus(ctx context.Context, _ *mcp.CallToolRequest, args updateIssueStatusArgs) (*mcp.CallToolResult, dto.Issue, error) {
+func (s *toolServer) updateIssueStatus(ctx context.Context, _ *mcp.CallToolRequest, args updateIssueStatusArgs) (*mcp.CallToolResult, dto.IssueSummary, error) {
 	if !auth.CanWrite(ctx) {
-		return errNoWrite, dto.Issue{}, nil
+		return errNoWrite, dto.IssueSummary{}, nil
 	}
 	if !validStatuses[args.Status] {
-		return errorResult("invalid status %q", args.Status), dto.Issue{}, nil
+		return errorResult("invalid status %q", args.Status), dto.IssueSummary{}, nil
 	}
 	team, err := s.currentTeam(ctx)
 	if err != nil {
-		return errorResult("%s", err), dto.Issue{}, nil
+		return errorResult("%s", err), dto.IssueSummary{}, nil
 	}
 	issue, err := s.resolveIssue(ctx, team.ID, args.ID)
 	if err != nil {
-		return errorResult("issue %q not found", args.ID), dto.Issue{}, nil
+		return errorResult("issue %q not found", args.ID), dto.IssueSummary{}, nil
 	}
 	updated, err := s.q.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{ID: issue.ID, Status: args.Status})
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	after, err := s.q.GetIssue(ctx, updated.ID)
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	userIDStr, _ := auth.UserID(ctx)
 	actorID, err := parseUUID(userIDStr)
 	if err != nil {
-		return errorResult("could not resolve caller"), dto.Issue{}, nil
+		return errorResult("could not resolve caller"), dto.IssueSummary{}, nil
 	}
 	if changes := issuehistory.Diff(issue, after); len(changes) > 0 {
 		if err := issuehistory.Record(ctx, s.q, updated.ID, actorID, "updated", changes); err != nil {
-			return nil, dto.Issue{}, err
+			return nil, dto.IssueSummary{}, err
 		}
 	}
 	return s.broadcastAndReturn(ctx, updated.ID, team.ID, "issue.updated")
@@ -534,17 +534,17 @@ type updateIssueArgs struct {
 	LabelID     *string `json:"labelId,omitempty" jsonschema:"new label id from list_labels; empty string clears it; omit to leave unchanged"`
 }
 
-func (s *toolServer) updateIssue(ctx context.Context, _ *mcp.CallToolRequest, args updateIssueArgs) (*mcp.CallToolResult, dto.Issue, error) {
+func (s *toolServer) updateIssue(ctx context.Context, _ *mcp.CallToolRequest, args updateIssueArgs) (*mcp.CallToolResult, dto.IssueSummary, error) {
 	if !auth.CanWrite(ctx) {
-		return errNoWrite, dto.Issue{}, nil
+		return errNoWrite, dto.IssueSummary{}, nil
 	}
 	team, err := s.currentTeam(ctx)
 	if err != nil {
-		return errorResult("%s", err), dto.Issue{}, nil
+		return errorResult("%s", err), dto.IssueSummary{}, nil
 	}
 	current, err := s.resolveIssue(ctx, team.ID, args.ID)
 	if err != nil {
-		return errorResult("issue %q not found", args.ID), dto.Issue{}, nil
+		return errorResult("issue %q not found", args.ID), dto.IssueSummary{}, nil
 	}
 
 	title, description, priority := current.Title, current.Description, current.Priority
@@ -559,15 +559,15 @@ func (s *toolServer) updateIssue(ctx context.Context, _ *mcp.CallToolRequest, ar
 	}
 	assigneeID, err := mergeOptionalRef(current.AssigneeID, args.AssigneeID)
 	if err != nil {
-		return errorResult("invalid assigneeId %q", *args.AssigneeID), dto.Issue{}, nil
+		return errorResult("invalid assigneeId %q", *args.AssigneeID), dto.IssueSummary{}, nil
 	}
 	projectID, err := mergeOptionalRef(current.ProjectID, args.ProjectID)
 	if err != nil {
-		return errorResult("invalid projectId %q", *args.ProjectID), dto.Issue{}, nil
+		return errorResult("invalid projectId %q", *args.ProjectID), dto.IssueSummary{}, nil
 	}
 	cycleID, err := mergeOptionalRef(current.CycleID, args.CycleID)
 	if err != nil {
-		return errorResult("invalid cycleId %q", *args.CycleID), dto.Issue{}, nil
+		return errorResult("invalid cycleId %q", *args.CycleID), dto.IssueSummary{}, nil
 	}
 
 	updated, err := s.q.UpdateIssueDetails(ctx, db.UpdateIssueDetailsParams{
@@ -575,25 +575,25 @@ func (s *toolServer) updateIssue(ctx context.Context, _ *mcp.CallToolRequest, ar
 		AssigneeID: assigneeID, ProjectID: projectID, CycleID: cycleID,
 	})
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	if args.LabelID != nil {
 		if err := s.applyIssueLabel(ctx, updated.ID, *args.LabelID); err != nil {
-			return errorResult("%s", err), dto.Issue{}, nil
+			return errorResult("%s", err), dto.IssueSummary{}, nil
 		}
 	}
 	after, err := s.q.GetIssue(ctx, updated.ID)
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	userIDStr, _ := auth.UserID(ctx)
 	actorID, err := parseUUID(userIDStr)
 	if err != nil {
-		return errorResult("could not resolve caller"), dto.Issue{}, nil
+		return errorResult("could not resolve caller"), dto.IssueSummary{}, nil
 	}
 	if changes := issuehistory.Diff(current, after); len(changes) > 0 {
 		if err := issuehistory.Record(ctx, s.q, updated.ID, actorID, "updated", changes); err != nil {
-			return nil, dto.Issue{}, err
+			return nil, dto.IssueSummary{}, err
 		}
 	}
 	return s.broadcastAndReturn(ctx, updated.ID, team.ID, "issue.updated")
@@ -611,14 +611,14 @@ func mergeOptionalRef(current pgtype.UUID, next *string) (pgtype.UUID, error) {
 	return parseUUID(*next)
 }
 
-func (s *toolServer) broadcastAndReturn(ctx context.Context, issueID, teamID pgtype.UUID, eventType string) (*mcp.CallToolResult, dto.Issue, error) {
+func (s *toolServer) broadcastAndReturn(ctx context.Context, issueID, teamID pgtype.UUID, eventType string) (*mcp.CallToolResult, dto.IssueSummary, error) {
 	row, err := s.q.GetIssue(ctx, issueID)
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	body := dto.IssueFromGetRow(row)
 	s.hub.Broadcast(ws.Event{Type: eventType, TeamID: teamID.String(), Payload: body})
-	return nil, body, nil
+	return nil, dto.IssueSummaryFromGetRow(row), nil
 }
 
 func (s *toolServer) listProjects(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, []dto.Project, error) {
