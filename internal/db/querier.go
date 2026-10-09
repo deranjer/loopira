@@ -21,6 +21,7 @@ type Querier interface {
 	CountWorkLogs(ctx context.Context, arg CountWorkLogsParams) (int32, error)
 	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (ApiKey, error)
 	CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error)
+	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
 	CreateCycle(ctx context.Context, arg CreateCycleParams) (Cycle, error)
 	CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue, error)
 	CreateIssueHistory(ctx context.Context, arg CreateIssueHistoryParams) (IssueHistory, error)
@@ -42,6 +43,7 @@ type Querier interface {
 	DeleteView(ctx context.Context, arg DeleteViewParams) error
 	GetAPIKeyByHash(ctx context.Context, keyHash string) (GetAPIKeyByHashRow, error)
 	GetAttachment(ctx context.Context, id pgtype.UUID) (Attachment, error)
+	GetComment(ctx context.Context, id pgtype.UUID) (GetCommentRow, error)
 	GetIssue(ctx context.Context, id pgtype.UUID) (GetIssueRow, error)
 	GetIssueByNumber(ctx context.Context, arg GetIssueByNumberParams) (GetIssueByNumberRow, error)
 	GetProject(ctx context.Context, id pgtype.UUID) (GetProjectRow, error)
@@ -55,6 +57,7 @@ type Querier interface {
 	ListAPIKeysByUser(ctx context.Context, userID pgtype.UUID) ([]ApiKey, error)
 	ListCycles(ctx context.Context, teamID pgtype.UUID) ([]ListCyclesRow, error)
 	ListFragmentUsage(ctx context.Context, fragmentID pgtype.UUID) ([]ListFragmentUsageRow, error)
+	ListIssueComments(ctx context.Context, issueID pgtype.UUID) ([]ListIssueCommentsRow, error)
 	ListIssueHistory(ctx context.Context, issueID pgtype.UUID) ([]ListIssueHistoryRow, error)
 	ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListIssuesRow, error)
 	ListLabels(ctx context.Context, teamID pgtype.UUID) ([]Label, error)

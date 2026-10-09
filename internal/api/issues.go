@@ -41,6 +41,21 @@ type issueHistoryOutput struct {
 	Body []dto.IssueHistoryEntry
 }
 
+type issueCommentsOutput struct {
+	Body []dto.Comment
+}
+
+type createCommentInput struct {
+	ID   string `path:"id"`
+	Body struct {
+		Body string `json:"body" minLength:"1"`
+	}
+}
+
+type commentOutput struct {
+	Body dto.Comment
+}
+
 type createIssueInput struct {
 	Body struct {
 		TeamID      string  `json:"teamId"`
@@ -184,6 +199,69 @@ func (s *Server) registerIssueRoutes() {
 			out.Body[i] = dto.IssueHistoryFromRow(row)
 		}
 		return out, nil
+	})
+
+	huma.Register(s.humaAPI, huma.Operation{
+		OperationID: "list-issue-comments",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/issues/{id}/comments",
+		Summary:     "List comments on an issue, oldest first",
+		Tags:        []string{"Issues"},
+		Middlewares: s.protected(),
+	}, func(ctx context.Context, input *getIssueInput) (*issueCommentsOutput, error) {
+		id, err := mustUUID(input.ID)
+		if err != nil {
+			return nil, huma.Error400BadRequest("invalid id")
+		}
+		if _, err := s.q.GetIssue(ctx, id); err != nil {
+			return nil, huma.Error404NotFound("issue not found")
+		}
+		rows, err := s.q.ListIssueComments(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out := &issueCommentsOutput{Body: make([]dto.Comment, len(rows))}
+		for i, row := range rows {
+			out.Body[i] = dto.CommentFromListRow(row)
+		}
+		return out, nil
+	})
+
+	huma.Register(s.humaAPI, huma.Operation{
+		OperationID: "create-issue-comment",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/issues/{id}/comments",
+		Summary:     "Add a comment to an issue",
+		Tags:        []string{"Issues"},
+		Middlewares: s.protected(),
+	}, func(ctx context.Context, input *createCommentInput) (*commentOutput, error) {
+		if !auth.CanWrite(ctx) {
+			return nil, huma.Error403Forbidden("read-only API key")
+		}
+		id, err := mustUUID(input.ID)
+		if err != nil {
+			return nil, huma.Error400BadRequest("invalid id")
+		}
+		issue, err := s.q.GetIssue(ctx, id)
+		if err != nil {
+			return nil, huma.Error404NotFound("issue not found")
+		}
+		userIDStr, _ := auth.UserID(ctx)
+		authorID, err := mustUUID(userIDStr)
+		if err != nil {
+			return nil, huma.Error401Unauthorized("login required")
+		}
+		created, err := s.q.CreateComment(ctx, db.CreateCommentParams{IssueID: id, AuthorID: authorID, Body: input.Body.Body})
+		if err != nil {
+			return nil, err
+		}
+		row, err := s.q.GetComment(ctx, created.ID)
+		if err != nil {
+			return nil, err
+		}
+		body := dto.CommentFromGetRow(row)
+		s.hub.Broadcast(ws.Event{Type: "issue.commented", TeamID: uid(issue.TeamID), Payload: body})
+		return &commentOutput{Body: body}, nil
 	})
 
 	huma.Register(s.humaAPI, huma.Operation{

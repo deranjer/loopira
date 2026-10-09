@@ -194,6 +194,22 @@ export function useIssueHistory(id: string | undefined) {
   })
 }
 
+export function useIssueComments(id: string | undefined) {
+  return useQuery({
+    queryKey: ['issueComments', id],
+    queryFn: () => issuesApi.comments(id!),
+    enabled: !!id,
+  })
+}
+
+export function useAddIssueComment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: string }) => issuesApi.addComment(id, body),
+    onSuccess: (_c, { id }) => qc.invalidateQueries({ queryKey: ['issueComments', id] }),
+  })
+}
+
 export function useCreateIssue() {
   const qc = useQueryClient()
   return useMutation({

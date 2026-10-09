@@ -200,3 +200,12 @@ export interface IssueHistoryEntry {
   changes: Record<string, IssueHistoryChange>
   createdAt: string
 }
+
+export interface IssueComment {
+  id: string
+  issueId: string
+  authorId: string
+  authorName: string
+  body: string
+  createdAt: string
+}

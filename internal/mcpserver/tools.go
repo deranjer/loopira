@@ -181,6 +181,64 @@ func (s *toolServer) getIssueHistory(ctx context.Context, _ *mcp.CallToolRequest
 	return nil, out, nil
 }
 
+func (s *toolServer) listComments(ctx context.Context, _ *mcp.CallToolRequest, args getIssueArgs) (*mcp.CallToolResult, []dto.Comment, error) {
+	team, err := s.currentTeam(ctx)
+	if err != nil {
+		return errorResult("%s", err), nil, nil
+	}
+	issue, err := s.resolveIssue(ctx, team.ID, args.ID)
+	if err != nil {
+		return errorResult("issue %q not found", args.ID), nil, nil
+	}
+	rows, err := s.q.ListIssueComments(ctx, issue.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := make([]dto.Comment, len(rows))
+	for i, row := range rows {
+		out[i] = dto.CommentFromListRow(row)
+	}
+	return nil, out, nil
+}
+
+type addCommentArgs struct {
+	ID   string `json:"id" jsonschema:"issue id (uuid) or identifier like ENG-3"`
+	Body string `json:"body" jsonschema:"comment text (markdown)"`
+}
+
+func (s *toolServer) addComment(ctx context.Context, _ *mcp.CallToolRequest, args addCommentArgs) (*mcp.CallToolResult, dto.Comment, error) {
+	if !auth.CanWrite(ctx) {
+		return errNoWrite, dto.Comment{}, nil
+	}
+	if strings.TrimSpace(args.Body) == "" {
+		return errorResult("body is required"), dto.Comment{}, nil
+	}
+	team, err := s.currentTeam(ctx)
+	if err != nil {
+		return errorResult("%s", err), dto.Comment{}, nil
+	}
+	issue, err := s.resolveIssue(ctx, team.ID, args.ID)
+	if err != nil {
+		return errorResult("issue %q not found", args.ID), dto.Comment{}, nil
+	}
+	userIDStr, _ := auth.UserID(ctx)
+	authorID, err := parseUUID(userIDStr)
+	if err != nil {
+		return errorResult("could not determine the calling user"), dto.Comment{}, nil
+	}
+	created, err := s.q.CreateComment(ctx, db.CreateCommentParams{IssueID: issue.ID, AuthorID: authorID, Body: args.Body})
+	if err != nil {
+		return nil, dto.Comment{}, err
+	}
+	row, err := s.q.GetComment(ctx, created.ID)
+	if err != nil {
+		return nil, dto.Comment{}, err
+	}
+	out := dto.CommentFromGetRow(row)
+	s.hub.Broadcast(ws.Event{Type: "issue.commented", TeamID: team.ID.String(), Payload: out})
+	return nil, out, nil
+}
+
 // applyIssueLabel replaces an issue's label set with zero or one label —
 // the UI only ever shows a single label per issue even though the schema
 // supports many-to-many via issue_labels. Mirrors internal/api's own

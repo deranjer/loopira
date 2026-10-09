@@ -10,6 +10,7 @@ import {
   useUsers,
 } from '../lib/api/hooks'
 import { PRIORITY_META, STATUS_META, STATUS_ORDER, avatarColor } from '../theme'
+import { IssueComments } from './IssueComments'
 import { IssueHistory } from './IssueHistory'
 
 const STATUS_OPTIONS = STATUS_ORDER.map((s) => ({ value: s, label: STATUS_META[s].label }))
@@ -103,6 +104,7 @@ export function IssueDetailPanel({
       <Tabs defaultValue="details">
         <Tabs.List>
           <Tabs.Tab value="details">Details</Tabs.Tab>
+          <Tabs.Tab value="comments">Comments</Tabs.Tab>
           <Tabs.Tab value="history">History</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="details" pt="lg">
@@ -222,6 +224,9 @@ export function IssueDetailPanel({
           />
             </Stack>
           </Stack>
+        </Tabs.Panel>
+        <Tabs.Panel value="comments" pt="sm">
+          <IssueComments issueId={issue.id} />
         </Tabs.Panel>
         <Tabs.Panel value="history" pt="sm">
           <IssueHistory issueId={issue.id} users={users} projects={projects} labels={labels} />

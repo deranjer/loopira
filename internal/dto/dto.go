@@ -110,6 +110,37 @@ func IssueHistoryFromRow(r db.ListIssueHistoryRow) IssueHistoryEntry {
 	}
 }
 
+type Comment struct {
+	ID         string `json:"id"`
+	IssueID    string `json:"issueId"`
+	AuthorID   string `json:"authorId"`
+	AuthorName string `json:"authorName"`
+	Body       string `json:"body"`
+	CreatedAt  string `json:"createdAt"`
+}
+
+func CommentFromListRow(c db.ListIssueCommentsRow) Comment {
+	return Comment{
+		ID:         uid(c.ID),
+		IssueID:    uid(c.IssueID),
+		AuthorID:   uid(c.AuthorID),
+		AuthorName: c.AuthorName,
+		Body:       c.Body,
+		CreatedAt:  ts(c.CreatedAt).Format(TimeFormat),
+	}
+}
+
+func CommentFromGetRow(c db.GetCommentRow) Comment {
+	return Comment{
+		ID:         uid(c.ID),
+		IssueID:    uid(c.IssueID),
+		AuthorID:   uid(c.AuthorID),
+		AuthorName: c.AuthorName,
+		Body:       c.Body,
+		CreatedAt:  ts(c.CreatedAt).Format(TimeFormat),
+	}
+}
+
 func IssueFromListRow(r db.ListIssuesRow) Issue {
 	i := Issue{
 		ID:           uid(r.ID),
