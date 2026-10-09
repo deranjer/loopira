@@ -5,6 +5,7 @@ import type {
   FragmentUsage,
   Issue,
   IssueHistoryEntry,
+  IssueComment,
   Label,
   NewApiKey,
   Project,
@@ -285,6 +286,9 @@ export const issuesApi = {
     return request<Issue[]>(`/issues?${params.toString()}`)
   },
   get: (id: string) => request<Issue>(`/issues/${id}`),
+  comments: (id: string) => request<IssueComment[]>(`/issues/${id}/comments`),
+  addComment: (id: string, body: string) =>
+    request<IssueComment>(`/issues/${id}/comments`, { method: 'POST', body: JSON.stringify({ body }) }),
   history: (id: string) => request<IssueHistoryEntry[]>(`/issues/${id}/history`),
   create: (input: CreateIssueInput) =>
     request<Issue>('/issues', { method: 'POST', body: JSON.stringify(input) }),

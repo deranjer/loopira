@@ -42,6 +42,16 @@ func New(q *db.Queries, hub *ws.Hub) *mcp.Server {
 	}, s.getIssueHistory)
 
 	mcp.AddTool(server, &mcp.Tool{
+		Name:        "list_comments",
+		Description: "List comments on an issue, oldest first.",
+	}, s.listComments)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "add_comment",
+		Description: "Add a comment to an issue. Requires a read-write API key.",
+	}, s.addComment)
+
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "create_issue",
 		Description: "Create a new issue. Requires a read-write API key.",
 	}, s.createIssue)

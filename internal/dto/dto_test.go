@@ -126,3 +126,21 @@ func TestProgressPct(t *testing.T) {
 		}
 	}
 }
+
+func TestCommentFromListRow(t *testing.T) {
+	now := time.Date(2026, 9, 1, 8, 30, 0, 0, time.UTC)
+	got := CommentFromListRow(db.ListIssueCommentsRow{
+		ID:         mustUUID(t, "11111111-1111-1111-1111-111111111111"),
+		IssueID:    mustUUID(t, "22222222-2222-2222-2222-222222222222"),
+		AuthorID:   mustUUID(t, "33333333-3333-3333-3333-333333333333"),
+		AuthorName: "Ada",
+		Body:       "Looks good",
+		CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+	})
+	if got.AuthorName != "Ada" || got.Body != "Looks good" || got.IssueID != "22222222-2222-2222-2222-222222222222" {
+		t.Errorf("unexpected comment: %+v", got)
+	}
+	if got.CreatedAt != now.Format(TimeFormat) {
+		t.Errorf("CreatedAt = %q", got.CreatedAt)
+	}
+}
