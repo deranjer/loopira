@@ -66,12 +66,13 @@ export const STATUS_META = {
     fill: 'conic-gradient(#f2c94c 50%, transparent 0)',
     border: 'solid',
   },
+  blocked: { label: 'Blocked', color: '#eb5757', fill: 'conic-gradient(#eb5757 25%, transparent 0)', border: 'solid' },
   done: { label: 'Done', color: '#5e6ad2', fill: '#5e6ad2', border: 'solid' },
   canceled: { label: 'Canceled', color: '#5a5d63', fill: 'transparent', border: 'solid' },
 } as const
 
 export type IssueStatus = keyof typeof STATUS_META
-export const STATUS_ORDER: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'done', 'canceled']
+export const STATUS_ORDER: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'blocked', 'done', 'canceled']
 
 // Projects have their own status enum (internal/db/migrations/00003_project_fields.sql),
 // distinct from issue status — same dot-badge visual language, different values.

@@ -71,7 +71,7 @@ type createIssueInput struct {
 type updateIssueStatusInput struct {
 	ID   string `path:"id"`
 	Body struct {
-		Status string `json:"status" enum:"backlog,todo,in_progress,done,canceled"`
+		Status string `json:"status" enum:"backlog,todo,in_progress,blocked,done,canceled"`
 	}
 }
 

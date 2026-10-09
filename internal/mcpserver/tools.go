@@ -84,18 +84,34 @@ func (s *toolServer) resolveIssue(ctx context.Context, teamID pgtype.UUID, ref s
 }
 
 type listIssuesArgs struct {
-	Status     string `json:"status,omitempty" jsonschema:"filter by status: backlog, todo, in_progress, done, or canceled"`
+	Status     string `json:"status,omitempty" jsonschema:"filter by status: backlog, todo, in_progress, blocked, done, or canceled"`
 	ProjectID  string `json:"projectId,omitempty" jsonschema:"filter by project id, from list_projects"`
 	CycleID    string `json:"cycleId,omitempty" jsonschema:"filter by cycle id, from list_cycles"`
 	AssigneeID string `json:"assigneeId,omitempty" jsonschema:"filter by assignee id, from list_users, or 'me' for the current user"`
 	Priority   *int16 `json:"priority,omitempty" jsonschema:"filter by priority: 0=none,1=urgent,2=high,3=medium,4=low"`
 	LabelID    string `json:"labelId,omitempty" jsonschema:"filter by label id, from list_labels"`
+
+	Search        string `json:"search,omitempty" jsonschema:"case-insensitive text match on title and description"`
+	IncludeClosed bool   `json:"includeClosed,omitempty" jsonschema:"include done and canceled issues (hidden by default unless status is set)"`
+	Limit         int    `json:"limit,omitempty" jsonschema:"max issues to return (default 25, max 100)"`
+	Offset        int    `json:"offset,omitempty" jsonschema:"number of matching issues to skip, for paging"`
 }
 
-func (s *toolServer) listIssues(ctx context.Context, _ *mcp.CallToolRequest, args listIssuesArgs) (*mcp.CallToolResult, []dto.Issue, error) {
+const (
+	defaultListIssuesLimit = 25
+	maxListIssuesLimit     = 100
+)
+
+type listIssuesResult struct {
+	Total        int                `json:"total"`                  // matches before paging
+	HiddenClosed int                `json:"hiddenClosed,omitempty"` // done/canceled matches omitted
+	Issues       []dto.IssueSummary `json:"issues"`
+}
+
+func (s *toolServer) listIssues(ctx context.Context, _ *mcp.CallToolRequest, args listIssuesArgs) (*mcp.CallToolResult, listIssuesResult, error) {
 	team, err := s.currentTeam(ctx)
 	if err != nil {
-		return errorResult("%s", err), nil, nil
+		return errorResult("%s", err), listIssuesResult{}, nil
 	}
 	params := db.ListIssuesParams{TeamID: team.ID}
 	if args.Status != "" {
@@ -104,14 +120,14 @@ func (s *toolServer) listIssues(ctx context.Context, _ *mcp.CallToolRequest, arg
 	if args.ProjectID != "" {
 		id, err := parseUUID(args.ProjectID)
 		if err != nil {
-			return errorResult("invalid projectId %q", args.ProjectID), nil, nil
+			return errorResult("invalid projectId %q", args.ProjectID), listIssuesResult{}, nil
 		}
 		params.ProjectID = id
 	}
 	if args.CycleID != "" {
 		id, err := parseUUID(args.CycleID)
 		if err != nil {
-			return errorResult("invalid cycleId %q", args.CycleID), nil, nil
+			return errorResult("invalid cycleId %q", args.CycleID), listIssuesResult{}, nil
 		}
 		params.CycleID = id
 	}
@@ -122,14 +138,14 @@ func (s *toolServer) listIssues(ctx context.Context, _ *mcp.CallToolRequest, arg
 		}
 		id, err := parseUUID(ref)
 		if err != nil {
-			return errorResult("invalid assigneeId %q", args.AssigneeID), nil, nil
+			return errorResult("invalid assigneeId %q", args.AssigneeID), listIssuesResult{}, nil
 		}
 		params.AssigneeID = id
 	}
 	if args.LabelID != "" {
 		id, err := parseUUID(args.LabelID)
 		if err != nil {
-			return errorResult("invalid labelId %q", args.LabelID), nil, nil
+			return errorResult("invalid labelId %q", args.LabelID), listIssuesResult{}, nil
 		}
 		params.LabelID = id
 	}
@@ -138,11 +154,30 @@ func (s *toolServer) listIssues(ctx context.Context, _ *mcp.CallToolRequest, arg
 	}
 	rows, err := s.q.ListIssues(ctx, params)
 	if err != nil {
-		return nil, nil, err
+		return nil, listIssuesResult{}, err
 	}
-	out := make([]dto.Issue, len(rows))
-	for i, r := range rows {
-		out[i] = dto.IssueFromListRow(r)
+	search := strings.ToLower(strings.TrimSpace(args.Search))
+	hideClosed := !args.IncludeClosed && args.Status == ""
+	limit := args.Limit
+	if limit <= 0 {
+		limit = defaultListIssuesLimit
+	}
+	limit = min(limit, maxListIssuesLimit)
+	offset := max(args.Offset, 0)
+
+	out := listIssuesResult{Issues: []dto.IssueSummary{}}
+	for _, r := range rows {
+		if search != "" && !strings.Contains(strings.ToLower(r.Title+"\n"+r.Description), search) {
+			continue
+		}
+		if hideClosed && (r.Status == "done" || r.Status == "canceled") {
+			out.HiddenClosed++
+			continue
+		}
+		if out.Total >= offset && len(out.Issues) < limit {
+			out.Issues = append(out.Issues, dto.IssueSummaryFromListRow(r))
+		}
+		out.Total++
 	}
 	return nil, out, nil
 }
@@ -395,31 +430,31 @@ type createIssueArgs struct {
 	LabelID     string `json:"labelId,omitempty" jsonschema:"label id, from list_labels"`
 }
 
-func (s *toolServer) createIssue(ctx context.Context, _ *mcp.CallToolRequest, args createIssueArgs) (*mcp.CallToolResult, dto.Issue, error) {
+func (s *toolServer) createIssue(ctx context.Context, _ *mcp.CallToolRequest, args createIssueArgs) (*mcp.CallToolResult, dto.IssueSummary, error) {
 	if !auth.CanWrite(ctx) {
-		return errNoWrite, dto.Issue{}, nil
+		return errNoWrite, dto.IssueSummary{}, nil
 	}
 	if strings.TrimSpace(args.Title) == "" {
-		return errorResult("title is required"), dto.Issue{}, nil
+		return errorResult("title is required"), dto.IssueSummary{}, nil
 	}
 	team, err := s.currentTeam(ctx)
 	if err != nil {
-		return errorResult("%s", err), dto.Issue{}, nil
+		return errorResult("%s", err), dto.IssueSummary{}, nil
 	}
 	userIDStr, _ := auth.UserID(ctx)
 	createdBy, err := parseUUID(userIDStr)
 	if err != nil {
-		return errorResult("could not resolve caller"), dto.Issue{}, nil
+		return errorResult("could not resolve caller"), dto.IssueSummary{}, nil
 	}
 	var assigneeID, projectID pgtype.UUID
 	if args.AssigneeID != "" {
 		if assigneeID, err = parseUUID(args.AssigneeID); err != nil {
-			return errorResult("invalid assigneeId %q", args.AssigneeID), dto.Issue{}, nil
+			return errorResult("invalid assigneeId %q", args.AssigneeID), dto.IssueSummary{}, nil
 		}
 	}
 	if args.ProjectID != "" {
 		if projectID, err = parseUUID(args.ProjectID); err != nil {
-			return errorResult("invalid projectId %q", args.ProjectID), dto.Issue{}, nil
+			return errorResult("invalid projectId %q", args.ProjectID), dto.IssueSummary{}, nil
 		}
 	}
 	created, err := s.q.CreateIssue(ctx, db.CreateIssueParams{
@@ -432,57 +467,57 @@ func (s *toolServer) createIssue(ctx context.Context, _ *mcp.CallToolRequest, ar
 		CreatedBy:   createdBy,
 	})
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	if err := s.applyIssueLabel(ctx, created.ID, args.LabelID); err != nil {
-		return errorResult("%s", err), dto.Issue{}, nil
+		return errorResult("%s", err), dto.IssueSummary{}, nil
 	}
 	if err := issuehistory.Record(ctx, s.q, created.ID, createdBy, "created", nil); err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	return s.broadcastAndReturn(ctx, created.ID, team.ID, "issue.created")
 }
 
 type updateIssueStatusArgs struct {
 	ID     string `json:"id" jsonschema:"issue id or identifier"`
-	Status string `json:"status" jsonschema:"backlog, todo, in_progress, done, or canceled"`
+	Status string `json:"status" jsonschema:"backlog, todo, in_progress, blocked, done, or canceled"`
 }
 
 var validStatuses = map[string]bool{
-	"backlog": true, "todo": true, "in_progress": true, "done": true, "canceled": true,
+	"backlog": true, "todo": true, "in_progress": true, "blocked": true, "done": true, "canceled": true,
 }
 
-func (s *toolServer) updateIssueStatus(ctx context.Context, _ *mcp.CallToolRequest, args updateIssueStatusArgs) (*mcp.CallToolResult, dto.Issue, error) {
+func (s *toolServer) updateIssueStatus(ctx context.Context, _ *mcp.CallToolRequest, args updateIssueStatusArgs) (*mcp.CallToolResult, dto.IssueSummary, error) {
 	if !auth.CanWrite(ctx) {
-		return errNoWrite, dto.Issue{}, nil
+		return errNoWrite, dto.IssueSummary{}, nil
 	}
 	if !validStatuses[args.Status] {
-		return errorResult("invalid status %q", args.Status), dto.Issue{}, nil
+		return errorResult("invalid status %q", args.Status), dto.IssueSummary{}, nil
 	}
 	team, err := s.currentTeam(ctx)
 	if err != nil {
-		return errorResult("%s", err), dto.Issue{}, nil
+		return errorResult("%s", err), dto.IssueSummary{}, nil
 	}
 	issue, err := s.resolveIssue(ctx, team.ID, args.ID)
 	if err != nil {
-		return errorResult("issue %q not found", args.ID), dto.Issue{}, nil
+		return errorResult("issue %q not found", args.ID), dto.IssueSummary{}, nil
 	}
 	updated, err := s.q.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{ID: issue.ID, Status: args.Status})
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	after, err := s.q.GetIssue(ctx, updated.ID)
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	userIDStr, _ := auth.UserID(ctx)
 	actorID, err := parseUUID(userIDStr)
 	if err != nil {
-		return errorResult("could not resolve caller"), dto.Issue{}, nil
+		return errorResult("could not resolve caller"), dto.IssueSummary{}, nil
 	}
 	if changes := issuehistory.Diff(issue, after); len(changes) > 0 {
 		if err := issuehistory.Record(ctx, s.q, updated.ID, actorID, "updated", changes); err != nil {
-			return nil, dto.Issue{}, err
+			return nil, dto.IssueSummary{}, err
 		}
 	}
 	return s.broadcastAndReturn(ctx, updated.ID, team.ID, "issue.updated")
@@ -499,17 +534,17 @@ type updateIssueArgs struct {
 	LabelID     *string `json:"labelId,omitempty" jsonschema:"new label id from list_labels; empty string clears it; omit to leave unchanged"`
 }
 
-func (s *toolServer) updateIssue(ctx context.Context, _ *mcp.CallToolRequest, args updateIssueArgs) (*mcp.CallToolResult, dto.Issue, error) {
+func (s *toolServer) updateIssue(ctx context.Context, _ *mcp.CallToolRequest, args updateIssueArgs) (*mcp.CallToolResult, dto.IssueSummary, error) {
 	if !auth.CanWrite(ctx) {
-		return errNoWrite, dto.Issue{}, nil
+		return errNoWrite, dto.IssueSummary{}, nil
 	}
 	team, err := s.currentTeam(ctx)
 	if err != nil {
-		return errorResult("%s", err), dto.Issue{}, nil
+		return errorResult("%s", err), dto.IssueSummary{}, nil
 	}
 	current, err := s.resolveIssue(ctx, team.ID, args.ID)
 	if err != nil {
-		return errorResult("issue %q not found", args.ID), dto.Issue{}, nil
+		return errorResult("issue %q not found", args.ID), dto.IssueSummary{}, nil
 	}
 
 	title, description, priority := current.Title, current.Description, current.Priority
@@ -524,15 +559,15 @@ func (s *toolServer) updateIssue(ctx context.Context, _ *mcp.CallToolRequest, ar
 	}
 	assigneeID, err := mergeOptionalRef(current.AssigneeID, args.AssigneeID)
 	if err != nil {
-		return errorResult("invalid assigneeId %q", *args.AssigneeID), dto.Issue{}, nil
+		return errorResult("invalid assigneeId %q", *args.AssigneeID), dto.IssueSummary{}, nil
 	}
 	projectID, err := mergeOptionalRef(current.ProjectID, args.ProjectID)
 	if err != nil {
-		return errorResult("invalid projectId %q", *args.ProjectID), dto.Issue{}, nil
+		return errorResult("invalid projectId %q", *args.ProjectID), dto.IssueSummary{}, nil
 	}
 	cycleID, err := mergeOptionalRef(current.CycleID, args.CycleID)
 	if err != nil {
-		return errorResult("invalid cycleId %q", *args.CycleID), dto.Issue{}, nil
+		return errorResult("invalid cycleId %q", *args.CycleID), dto.IssueSummary{}, nil
 	}
 
 	updated, err := s.q.UpdateIssueDetails(ctx, db.UpdateIssueDetailsParams{
@@ -540,25 +575,25 @@ func (s *toolServer) updateIssue(ctx context.Context, _ *mcp.CallToolRequest, ar
 		AssigneeID: assigneeID, ProjectID: projectID, CycleID: cycleID,
 	})
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	if args.LabelID != nil {
 		if err := s.applyIssueLabel(ctx, updated.ID, *args.LabelID); err != nil {
-			return errorResult("%s", err), dto.Issue{}, nil
+			return errorResult("%s", err), dto.IssueSummary{}, nil
 		}
 	}
 	after, err := s.q.GetIssue(ctx, updated.ID)
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	userIDStr, _ := auth.UserID(ctx)
 	actorID, err := parseUUID(userIDStr)
 	if err != nil {
-		return errorResult("could not resolve caller"), dto.Issue{}, nil
+		return errorResult("could not resolve caller"), dto.IssueSummary{}, nil
 	}
 	if changes := issuehistory.Diff(current, after); len(changes) > 0 {
 		if err := issuehistory.Record(ctx, s.q, updated.ID, actorID, "updated", changes); err != nil {
-			return nil, dto.Issue{}, err
+			return nil, dto.IssueSummary{}, err
 		}
 	}
 	return s.broadcastAndReturn(ctx, updated.ID, team.ID, "issue.updated")
@@ -576,14 +611,14 @@ func mergeOptionalRef(current pgtype.UUID, next *string) (pgtype.UUID, error) {
 	return parseUUID(*next)
 }
 
-func (s *toolServer) broadcastAndReturn(ctx context.Context, issueID, teamID pgtype.UUID, eventType string) (*mcp.CallToolResult, dto.Issue, error) {
+func (s *toolServer) broadcastAndReturn(ctx context.Context, issueID, teamID pgtype.UUID, eventType string) (*mcp.CallToolResult, dto.IssueSummary, error) {
 	row, err := s.q.GetIssue(ctx, issueID)
 	if err != nil {
-		return nil, dto.Issue{}, err
+		return nil, dto.IssueSummary{}, err
 	}
 	body := dto.IssueFromGetRow(row)
 	s.hub.Broadcast(ws.Event{Type: eventType, TeamID: teamID.String(), Payload: body})
-	return nil, body, nil
+	return nil, dto.IssueSummaryFromGetRow(row), nil
 }
 
 func (s *toolServer) listProjects(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, []dto.Project, error) {
@@ -908,14 +943,14 @@ func (s *toolServer) getTemplate(ctx context.Context, _ *mcp.CallToolRequest, ar
 	return nil, out, nil
 }
 
-func (s *toolServer) listTemplateFragments(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, []dto.TemplateFragment, error) {
+func (s *toolServer) listTemplateFragments(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, []dto.TemplateFragmentSummary, error) {
 	rows, err := s.q.ListTemplateFragments(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	out := make([]dto.TemplateFragment, len(rows))
+	out := make([]dto.TemplateFragmentSummary, len(rows))
 	for i, f := range rows {
-		out[i] = dto.TemplateFragmentFromRow(f)
+		out[i] = dto.TemplateFragmentSummaryFromRow(f)
 	}
 	return nil, out, nil
 }
@@ -962,15 +997,24 @@ func (s *toolServer) getProjectGuide(ctx context.Context, _ *mcp.CallToolRequest
 	return nil, out, nil
 }
 
-const listWorkLogLimit = 50
+const (
+	defaultListWorkLogLimit = 10
+	maxListWorkLogLimit     = 50
+)
 
 type listWorkLogArgs struct {
 	ProjectID string `json:"projectId,omitempty" jsonschema:"filter by project id, from list_projects; omit to see recent entries across all projects"`
 	Search    string `json:"search,omitempty" jsonschema:"free-text search over title and body"`
+	Limit     int    `json:"limit,omitempty" jsonschema:"max entries to return (default 10, max 50)"`
+	Offset    int    `json:"offset,omitempty" jsonschema:"number of entries to skip, for paging"`
 }
 
-func (s *toolServer) listWorkLog(ctx context.Context, _ *mcp.CallToolRequest, args listWorkLogArgs) (*mcp.CallToolResult, []dto.WorkLog, error) {
-	params := db.ListWorkLogsParams{LimitCount: listWorkLogLimit}
+func (s *toolServer) listWorkLog(ctx context.Context, _ *mcp.CallToolRequest, args listWorkLogArgs) (*mcp.CallToolResult, []dto.WorkLogSummary, error) {
+	limit := args.Limit
+	if limit <= 0 {
+		limit = defaultListWorkLogLimit
+	}
+	params := db.ListWorkLogsParams{LimitCount: int32(min(limit, maxListWorkLogLimit)), OffsetCount: int32(max(args.Offset, 0))}
 	if args.ProjectID != "" {
 		id, err := parseUUID(args.ProjectID)
 		if err != nil {
@@ -985,9 +1029,25 @@ func (s *toolServer) listWorkLog(ctx context.Context, _ *mcp.CallToolRequest, ar
 	if err != nil {
 		return nil, nil, err
 	}
-	out := make([]dto.WorkLog, len(rows))
+	out := make([]dto.WorkLogSummary, len(rows))
 	for i, r := range rows {
-		out[i] = dto.WorkLogFromGlobalRow(r)
+		out[i] = dto.WorkLogSummaryFromGlobalRow(r)
 	}
 	return nil, out, nil
+}
+
+type getWorkLogArgs struct {
+	ID string `json:"id" jsonschema:"work log entry id, from list_work_log"`
+}
+
+func (s *toolServer) getWorkLog(ctx context.Context, _ *mcp.CallToolRequest, args getWorkLogArgs) (*mcp.CallToolResult, dto.WorkLog, error) {
+	id, err := parseUUID(args.ID)
+	if err != nil {
+		return errorResult("invalid id %q", args.ID), dto.WorkLog{}, nil
+	}
+	row, err := s.q.GetWorkLog(ctx, id)
+	if err != nil {
+		return errorResult("work log entry %q not found", args.ID), dto.WorkLog{}, nil
+	}
+	return nil, dto.WorkLogFromGetRow(row), nil
 }

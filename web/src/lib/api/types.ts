@@ -167,7 +167,7 @@ export interface WorkLog {
   createdAt: string
 }
 
-export type IssueStatusValue = 'backlog' | 'todo' | 'in_progress' | 'done' | 'canceled'
+export type IssueStatusValue = 'backlog' | 'todo' | 'in_progress' | 'blocked' | 'done' | 'canceled'
 
 export interface Issue {
   id: string
