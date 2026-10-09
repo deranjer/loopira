@@ -2,6 +2,7 @@ package mcpserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/deranjer/loopira/internal/db"
 	"github.com/deranjer/loopira/internal/dto"
 	"github.com/deranjer/loopira/internal/issuehistory"
+	"github.com/deranjer/loopira/internal/issuelinks"
 	"github.com/deranjer/loopira/internal/ws"
 )
 
@@ -237,6 +239,131 @@ func (s *toolServer) addComment(ctx context.Context, _ *mcp.CallToolRequest, arg
 	out := dto.CommentFromGetRow(row)
 	s.hub.Broadcast(ws.Event{Type: "issue.commented", TeamID: team.ID.String(), Payload: out})
 	return nil, out, nil
+}
+
+func (s *toolServer) getIssueLinks(ctx context.Context, _ *mcp.CallToolRequest, args getIssueArgs) (*mcp.CallToolResult, dto.IssueLinks, error) {
+	team, err := s.currentTeam(ctx)
+	if err != nil {
+		return errorResult("%s", err), dto.IssueLinks{}, nil
+	}
+	issue, err := s.resolveIssue(ctx, team.ID, args.ID)
+	if err != nil {
+		return errorResult("issue %q not found", args.ID), dto.IssueLinks{}, nil
+	}
+	rows, err := s.q.ListIssueLinks(ctx, issue.ID)
+	if err != nil {
+		return nil, dto.IssueLinks{}, err
+	}
+	return nil, dto.IssueLinksFromRows(rows), nil
+}
+
+type setIssueParentArgs struct {
+	ID     string `json:"id" jsonschema:"issue id or identifier of the child"`
+	Parent string `json:"parent,omitempty" jsonschema:"issue id or identifier of the new parent; omit to detach"`
+}
+
+func (s *toolServer) setIssueParent(ctx context.Context, _ *mcp.CallToolRequest, args setIssueParentArgs) (*mcp.CallToolResult, dto.IssueLinks, error) {
+	if !auth.CanWrite(ctx) {
+		return errNoWrite, dto.IssueLinks{}, nil
+	}
+	team, err := s.currentTeam(ctx)
+	if err != nil {
+		return errorResult("%s", err), dto.IssueLinks{}, nil
+	}
+	before, err := s.resolveIssue(ctx, team.ID, args.ID)
+	if err != nil {
+		return errorResult("issue %q not found", args.ID), dto.IssueLinks{}, nil
+	}
+	var parentID pgtype.UUID
+	if args.Parent != "" {
+		parent, err := s.resolveIssue(ctx, team.ID, args.Parent)
+		if err != nil {
+			return errorResult("parent issue %q not found", args.Parent), dto.IssueLinks{}, nil
+		}
+		parentID = parent.ID
+	}
+	if _, err := issuelinks.SetParent(ctx, s.q, before, parentID); err != nil {
+		if errors.Is(err, issuelinks.ErrInvalid) {
+			return errorResult("%s", err), dto.IssueLinks{}, nil
+		}
+		return nil, dto.IssueLinks{}, err
+	}
+	row, err := s.q.GetIssue(ctx, before.ID)
+	if err != nil {
+		return nil, dto.IssueLinks{}, err
+	}
+	if changes := issuehistory.Diff(before, row); len(changes) > 0 {
+		userID, _ := auth.UserID(ctx)
+		if actorID, err := parseUUID(userID); err == nil {
+			if err := issuehistory.Record(ctx, s.q, row.ID, actorID, "updated", changes); err != nil {
+				return nil, dto.IssueLinks{}, err
+			}
+		}
+	}
+	s.hub.Broadcast(ws.Event{Type: "issue.updated", TeamID: team.ID.String(), Payload: dto.IssueFromGetRow(row)})
+	return s.linksResult(ctx, row.ID)
+}
+
+type setIssueBlockerArgs struct {
+	ID      string `json:"id" jsonschema:"issue id or identifier of the BLOCKED issue"`
+	Blocker string `json:"blocker" jsonschema:"issue id or identifier of the issue that blocks it"`
+	Remove  bool   `json:"remove,omitempty" jsonschema:"true to remove this dependency instead of adding it"`
+}
+
+func (s *toolServer) setIssueBlocker(ctx context.Context, _ *mcp.CallToolRequest, args setIssueBlockerArgs) (*mcp.CallToolResult, dto.IssueLinks, error) {
+	if !auth.CanWrite(ctx) {
+		return errNoWrite, dto.IssueLinks{}, nil
+	}
+	team, err := s.currentTeam(ctx)
+	if err != nil {
+		return errorResult("%s", err), dto.IssueLinks{}, nil
+	}
+	blocked, err := s.resolveIssue(ctx, team.ID, args.ID)
+	if err != nil {
+		return errorResult("issue %q not found", args.ID), dto.IssueLinks{}, nil
+	}
+	blocker, err := s.resolveIssue(ctx, team.ID, args.Blocker)
+	if err != nil {
+		return errorResult("blocking issue %q not found", args.Blocker), dto.IssueLinks{}, nil
+	}
+	change := issuehistory.Change{}
+	ref := fmt.Sprintf("%s-%d", blocker.TeamKey, blocker.Number)
+	var changed bool
+	if args.Remove {
+		changed, err = issuelinks.RemoveBlocker(ctx, s.q, blocker.ID, blocked.ID)
+		change.From = ref
+	} else {
+		changed, err = issuelinks.AddBlocker(ctx, s.q, blocker, blocked)
+		change.To = ref
+	}
+	if err != nil {
+		if errors.Is(err, issuelinks.ErrInvalid) {
+			return errorResult("%s", err), dto.IssueLinks{}, nil
+		}
+		return nil, dto.IssueLinks{}, err
+	}
+	if changed {
+		userID, _ := auth.UserID(ctx)
+		if actorID, err := parseUUID(userID); err == nil {
+			if err := issuehistory.Record(ctx, s.q, blocked.ID, actorID, "updated", map[string]issuehistory.Change{"blockedBy": change}); err != nil {
+				return nil, dto.IssueLinks{}, err
+			}
+		}
+		for _, id := range []pgtype.UUID{blocked.ID, blocker.ID} {
+			if row, err := s.q.GetIssue(ctx, id); err == nil {
+				s.hub.Broadcast(ws.Event{Type: "issue.updated", TeamID: team.ID.String(), Payload: dto.IssueFromGetRow(row)})
+			}
+		}
+	}
+	return s.linksResult(ctx, blocked.ID)
+}
+
+func (s *toolServer) linksResult(ctx context.Context, id pgtype.UUID) (*mcp.CallToolResult, dto.IssueLinks, error) {
+	rows, err := s.q.ListIssueLinks(ctx, id)
+	if err != nil {
+		return nil, dto.IssueLinks{}, err
+	}
+	return nil, dto.IssueLinksFromRows(rows), nil
 }
 
 // applyIssueLabel replaces an issue's label set with zero or one label —

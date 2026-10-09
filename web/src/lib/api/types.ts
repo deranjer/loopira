@@ -181,6 +181,8 @@ export interface Issue {
   projectId: string | null
   projectName: string | null
   cycleId: string | null
+  parentId: string | null
+  blocked: boolean
   label: { id: string; name: string; color: string } | null
   createdAt: string
   updatedAt: string
@@ -208,4 +210,18 @@ export interface IssueComment {
   authorName: string
   body: string
   createdAt: string
+}
+
+export interface IssueRef {
+  id: string
+  identifier: string
+  title: string
+  status: IssueStatusValue
+}
+
+export interface IssueLinks {
+  parent: IssueRef | null
+  children: IssueRef[]
+  blockedBy: IssueRef[]
+  blocks: IssueRef[]
 }

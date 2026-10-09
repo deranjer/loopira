@@ -10,6 +10,7 @@ import {
   useUsers,
 } from '../lib/api/hooks'
 import { PRIORITY_META, STATUS_META, STATUS_ORDER, avatarColor } from '../theme'
+import { IssueLinks } from './IssueLinks'
 import { IssueComments } from './IssueComments'
 import { IssueHistory } from './IssueHistory'
 
@@ -223,6 +224,9 @@ export function IssueDetailPanel({
             }}
           />
             </Stack>
+            <div style={{ borderTop: '1px solid #1d1e21', paddingTop: 20 }}>
+              <IssueLinks issue={issue} teamId={teamId} />
+            </div>
           </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="comments" pt="sm">

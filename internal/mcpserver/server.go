@@ -52,6 +52,21 @@ func New(q *db.Queries, hub *ws.Hub) *mcp.Server {
 	}, s.addComment)
 
 	mcp.AddTool(server, &mcp.Tool{
+		Name:        "get_issue_links",
+		Description: "Get an issue's parent, sub-issues, and blocking dependencies (blockedBy / blocks).",
+	}, s.getIssueLinks)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "set_issue_parent",
+		Description: "Make an issue a sub-issue of another, or detach it by omitting parent. Requires a read-write API key.",
+	}, s.setIssueParent)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "set_issue_blocker",
+		Description: "Mark an issue as blocked by another issue, or remove that dependency with remove=true. Requires a read-write API key.",
+	}, s.setIssueBlocker)
+
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "create_issue",
 		Description: "Create a new issue. Requires a read-write API key.",
 	}, s.createIssue)

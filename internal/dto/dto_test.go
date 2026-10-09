@@ -144,3 +144,23 @@ func TestCommentFromListRow(t *testing.T) {
 		t.Errorf("CreatedAt = %q", got.CreatedAt)
 	}
 }
+
+func TestIssueLinksFromRowsGroupsByKind(t *testing.T) {
+	row := func(kind, id string, n int32) db.ListIssueLinksRow {
+		return db.ListIssueLinksRow{Kind: kind, ID: mustUUID(t, id), TeamKey: "ENG", Number: n, Title: "t", Status: "todo"}
+	}
+	got := IssueLinksFromRows([]db.ListIssueLinksRow{
+		row("parent", "11111111-1111-1111-1111-111111111111", 1),
+		row("child", "22222222-2222-2222-2222-222222222222", 2),
+		row("blocked_by", "33333333-3333-3333-3333-333333333333", 3),
+	})
+	if got.Parent == nil || got.Parent.Identifier != "ENG-1" {
+		t.Errorf("parent = %+v", got.Parent)
+	}
+	if len(got.Children) != 1 || len(got.BlockedBy) != 1 {
+		t.Errorf("children/blockedBy = %+v / %+v", got.Children, got.BlockedBy)
+	}
+	if got.Blocks == nil || len(got.Blocks) != 0 {
+		t.Errorf("blocks should be an empty non-nil slice, got %#v", got.Blocks)
+	}
+}

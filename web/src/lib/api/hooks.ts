@@ -210,6 +210,38 @@ export function useAddIssueComment() {
   })
 }
 
+export function useIssueLinks(id: string | undefined) {
+  return useQuery({
+    queryKey: ['issueLinks', id],
+    queryFn: () => issuesApi.links(id!),
+    enabled: !!id,
+  })
+}
+
+function invalidateLinks(qc: ReturnType<typeof useQueryClient>, id: string) {
+  qc.invalidateQueries({ queryKey: ['issues'] })
+  qc.invalidateQueries({ queryKey: ['issue'] })
+  qc.invalidateQueries({ queryKey: ['issueLinks'] })
+  qc.invalidateQueries({ queryKey: ['issueHistory', id] })
+}
+
+export function useSetIssueParent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, parentId }: { id: string; parentId: string | null }) => issuesApi.setParent(id, parentId),
+    onSuccess: (_issue, { id }) => invalidateLinks(qc, id),
+  })
+}
+
+export function useChangeIssueBlocker() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, blockerId, remove }: { id: string; blockerId: string; remove?: boolean }) =>
+      remove ? issuesApi.removeBlocker(id, blockerId) : issuesApi.addBlocker(id, blockerId),
+    onSuccess: (_links, { id }) => invalidateLinks(qc, id),
+  })
+}
+
 export function useCreateIssue() {
   const qc = useQueryClient()
   return useMutation({

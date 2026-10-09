@@ -72,7 +72,12 @@ SELECT
     p.name AS project_name,
     lbl.id AS label_id,
     COALESCE(lbl.name, '') AS label_name,
-    COALESCE(lbl.color, '') AS label_color
+    COALESCE(lbl.color, '') AS label_color,
+    EXISTS (
+        SELECT 1 FROM issue_relations r
+        JOIN issues b ON b.id = r.issue_id
+        WHERE r.related_issue_id = i.id AND r.type = 'blocks' AND b.status NOT IN ('done', 'canceled')
+    ) AS blocked
 FROM issues i
 JOIN teams t ON t.id = i.team_id
 LEFT JOIN users u ON u.id = i.assignee_id
@@ -110,6 +115,7 @@ type GetIssueRow struct {
 	LabelID      pgtype.UUID        `json:"label_id"`
 	LabelName    string             `json:"label_name"`
 	LabelColor   string             `json:"label_color"`
+	Blocked      bool               `json:"blocked"`
 }
 
 func (q *Queries) GetIssue(ctx context.Context, id pgtype.UUID) (GetIssueRow, error) {
@@ -137,6 +143,7 @@ func (q *Queries) GetIssue(ctx context.Context, id pgtype.UUID) (GetIssueRow, er
 		&i.LabelID,
 		&i.LabelName,
 		&i.LabelColor,
+		&i.Blocked,
 	)
 	return i, err
 }
@@ -149,7 +156,12 @@ SELECT
     p.name AS project_name,
     lbl.id AS label_id,
     COALESCE(lbl.name, '') AS label_name,
-    COALESCE(lbl.color, '') AS label_color
+    COALESCE(lbl.color, '') AS label_color,
+    EXISTS (
+        SELECT 1 FROM issue_relations r
+        JOIN issues b ON b.id = r.issue_id
+        WHERE r.related_issue_id = i.id AND r.type = 'blocks' AND b.status NOT IN ('done', 'canceled')
+    ) AS blocked
 FROM issues i
 JOIN teams t ON t.id = i.team_id
 LEFT JOIN users u ON u.id = i.assignee_id
@@ -192,6 +204,7 @@ type GetIssueByNumberRow struct {
 	LabelID      pgtype.UUID        `json:"label_id"`
 	LabelName    string             `json:"label_name"`
 	LabelColor   string             `json:"label_color"`
+	Blocked      bool               `json:"blocked"`
 }
 
 func (q *Queries) GetIssueByNumber(ctx context.Context, arg GetIssueByNumberParams) (GetIssueByNumberRow, error) {
@@ -219,6 +232,7 @@ func (q *Queries) GetIssueByNumber(ctx context.Context, arg GetIssueByNumberPara
 		&i.LabelID,
 		&i.LabelName,
 		&i.LabelColor,
+		&i.Blocked,
 	)
 	return i, err
 }
@@ -231,7 +245,12 @@ SELECT
     p.name AS project_name,
     lbl.id AS label_id,
     COALESCE(lbl.name, '') AS label_name,
-    COALESCE(lbl.color, '') AS label_color
+    COALESCE(lbl.color, '') AS label_color,
+    EXISTS (
+        SELECT 1 FROM issue_relations r
+        JOIN issues b ON b.id = r.issue_id
+        WHERE r.related_issue_id = i.id AND r.type = 'blocks' AND b.status NOT IN ('done', 'canceled')
+    ) AS blocked
 FROM issues i
 JOIN teams t ON t.id = i.team_id
 LEFT JOIN users u ON u.id = i.assignee_id
@@ -289,6 +308,7 @@ type ListIssuesRow struct {
 	LabelID      pgtype.UUID        `json:"label_id"`
 	LabelName    string             `json:"label_name"`
 	LabelColor   string             `json:"label_color"`
+	Blocked      bool               `json:"blocked"`
 }
 
 func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListIssuesRow, error) {
@@ -330,6 +350,7 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListI
 			&i.LabelID,
 			&i.LabelName,
 			&i.LabelColor,
+			&i.Blocked,
 		); err != nil {
 			return nil, err
 		}
