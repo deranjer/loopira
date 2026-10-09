@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	AddIssueBlocker(ctx context.Context, arg AddIssueBlockerParams) (int64, error)
 	AddIssueLabel(ctx context.Context, arg AddIssueLabelParams) error
 	AddProjectGuideFragment(ctx context.Context, arg AddProjectGuideFragmentParams) (ProjectGuideFragment, error)
 	AddProjectMember(ctx context.Context, arg AddProjectMemberParams) error
@@ -41,6 +42,10 @@ type Querier interface {
 	DeleteTemplate(ctx context.Context, id pgtype.UUID) error
 	DeleteTemplateFragment(ctx context.Context, id pgtype.UUID) error
 	DeleteView(ctx context.Context, arg DeleteViewParams) error
+	// DoesIssueBlockTransitively reports whether sqlc.arg(from_id) already blocks
+	// sqlc.arg(to_id), directly or through a chain. Adding the reverse edge
+	// would create a dependency cycle.
+	DoesIssueBlockTransitively(ctx context.Context, arg DoesIssueBlockTransitivelyParams) (bool, error)
 	GetAPIKeyByHash(ctx context.Context, keyHash string) (GetAPIKeyByHashRow, error)
 	GetAttachment(ctx context.Context, id pgtype.UUID) (Attachment, error)
 	GetComment(ctx context.Context, id pgtype.UUID) (GetCommentRow, error)
@@ -54,11 +59,16 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	GetWorkLog(ctx context.Context, id pgtype.UUID) (GetWorkLogRow, error)
+	// IsIssueInAncestry reports whether sqlc.arg(issue_id) is the issue
+	// sqlc.arg(start_id) or one of its ancestors. Used to reject parent cycles:
+	// the proposed parent must not descend from the issue being re-parented.
+	IsIssueInAncestry(ctx context.Context, arg IsIssueInAncestryParams) (bool, error)
 	ListAPIKeysByUser(ctx context.Context, userID pgtype.UUID) ([]ApiKey, error)
 	ListCycles(ctx context.Context, teamID pgtype.UUID) ([]ListCyclesRow, error)
 	ListFragmentUsage(ctx context.Context, fragmentID pgtype.UUID) ([]ListFragmentUsageRow, error)
 	ListIssueComments(ctx context.Context, issueID pgtype.UUID) ([]ListIssueCommentsRow, error)
 	ListIssueHistory(ctx context.Context, issueID pgtype.UUID) ([]ListIssueHistoryRow, error)
+	ListIssueLinks(ctx context.Context, id pgtype.UUID) ([]ListIssueLinksRow, error)
 	ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListIssuesRow, error)
 	ListLabels(ctx context.Context, teamID pgtype.UUID) ([]Label, error)
 	ListProjectAttachments(ctx context.Context, projectID pgtype.UUID) ([]ListProjectAttachmentsRow, error)
@@ -77,9 +87,11 @@ type Querier interface {
 	ListViews(ctx context.Context, ownerID pgtype.UUID) ([]View, error)
 	ListWorkLogs(ctx context.Context, arg ListWorkLogsParams) ([]ListWorkLogsRow, error)
 	PushFragmentUpdate(ctx context.Context, arg PushFragmentUpdateParams) ([]ProjectGuideFragment, error)
+	RemoveIssueBlocker(ctx context.Context, arg RemoveIssueBlockerParams) (int64, error)
 	RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error
 	RemoveTemplateFragment(ctx context.Context, arg RemoveTemplateFragmentParams) error
 	ResetProjectGuideFragmentToBase(ctx context.Context, id pgtype.UUID) (ProjectGuideFragment, error)
+	SetIssueParent(ctx context.Context, arg SetIssueParentParams) (Issue, error)
 	SetProjectGuideFragmentPosition(ctx context.Context, arg SetProjectGuideFragmentPositionParams) error
 	SetTemplateFragmentPosition(ctx context.Context, arg SetTemplateFragmentPositionParams) error
 	UpdateAPIKeyLastUsed(ctx context.Context, id pgtype.UUID) error

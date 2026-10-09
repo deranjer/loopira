@@ -45,6 +45,9 @@ func Diff(before, after db.GetIssueRow) map[string]Change {
 	if before.CycleID != after.CycleID {
 		changes["cycle"] = Change{From: uuidValue(before.CycleID), To: uuidValue(after.CycleID)}
 	}
+	if before.ParentID != after.ParentID {
+		changes["parent"] = Change{From: uuidValue(before.ParentID), To: uuidValue(after.ParentID)}
+	}
 	if before.LabelID != after.LabelID {
 		changes["label"] = Change{From: uuidValue(before.LabelID), To: uuidValue(after.LabelID)}
 	}

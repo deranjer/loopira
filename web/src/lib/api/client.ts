@@ -6,6 +6,7 @@ import type {
   Issue,
   IssueHistoryEntry,
   IssueComment,
+  IssueLinks,
   Label,
   NewApiKey,
   Project,
@@ -289,6 +290,13 @@ export const issuesApi = {
   comments: (id: string) => request<IssueComment[]>(`/issues/${id}/comments`),
   addComment: (id: string, body: string) =>
     request<IssueComment>(`/issues/${id}/comments`, { method: 'POST', body: JSON.stringify({ body }) }),
+  links: (id: string) => request<IssueLinks>(`/issues/${id}/links`),
+  setParent: (id: string, parentId: string | null) =>
+    request<Issue>(`/issues/${id}/parent`, { method: 'PUT', body: JSON.stringify({ parentId }) }),
+  addBlocker: (id: string, blockerId: string) =>
+    request<IssueLinks>(`/issues/${id}/blockers/${blockerId}`, { method: 'PUT' }),
+  removeBlocker: (id: string, blockerId: string) =>
+    request<IssueLinks>(`/issues/${id}/blockers/${blockerId}`, { method: 'DELETE' }),
   history: (id: string) => request<IssueHistoryEntry[]>(`/issues/${id}/history`),
   create: (input: CreateIssueInput) =>
     request<Issue>('/issues', { method: 'POST', body: JSON.stringify(input) }),

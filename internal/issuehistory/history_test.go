@@ -46,3 +46,13 @@ func TestDiffRepresentsClearedReferencesAsNull(t *testing.T) {
 		t.Fatalf("unexpected project change: %#v", changes["project"])
 	}
 }
+
+func TestDiffRecordsParentChange(t *testing.T) {
+	before := db.GetIssueRow{Title: "Same"}
+	after := before
+	after.ParentID = pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
+	changes := Diff(before, after)
+	if len(changes) != 1 || changes["parent"].From != nil || changes["parent"].To == nil {
+		t.Fatalf("unexpected changes: %#v", changes)
+	}
+}

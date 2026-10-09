@@ -83,6 +83,8 @@ type Issue struct {
 	ProjectID    *string     `json:"projectId"`
 	ProjectName  *string     `json:"projectName"`
 	CycleID      *string     `json:"cycleId"`
+	ParentID     *string     `json:"parentId"`
+	Blocked      bool        `json:"blocked"` // has an unresolved blocking issue
 	Label        *IssueLabel `json:"label"`
 	CreatedAt    string      `json:"createdAt"`
 	UpdatedAt    string      `json:"updatedAt"`
@@ -108,6 +110,40 @@ func IssueHistoryFromRow(r db.ListIssueHistoryRow) IssueHistoryEntry {
 		Changes:   json.RawMessage(r.Changes),
 		CreatedAt: ts(r.CreatedAt).Format(TimeFormat),
 	}
+}
+
+// IssueRef is a compact pointer to another issue, used for hierarchy and
+// dependency links so callers don't pay for full issue bodies.
+type IssueRef struct {
+	ID         string `json:"id"`
+	Identifier string `json:"identifier"`
+	Title      string `json:"title"`
+	Status     string `json:"status"`
+}
+
+type IssueLinks struct {
+	Parent    *IssueRef  `json:"parent"`
+	Children  []IssueRef `json:"children"`
+	BlockedBy []IssueRef `json:"blockedBy"`
+	Blocks    []IssueRef `json:"blocks"`
+}
+
+func IssueLinksFromRows(rows []db.ListIssueLinksRow) IssueLinks {
+	out := IssueLinks{Children: []IssueRef{}, BlockedBy: []IssueRef{}, Blocks: []IssueRef{}}
+	for _, r := range rows {
+		ref := IssueRef{ID: uid(r.ID), Identifier: fmt.Sprintf("%s-%d", r.TeamKey, r.Number), Title: r.Title, Status: r.Status}
+		switch r.Kind {
+		case "parent":
+			out.Parent = &ref
+		case "child":
+			out.Children = append(out.Children, ref)
+		case "blocked_by":
+			out.BlockedBy = append(out.BlockedBy, ref)
+		case "blocks":
+			out.Blocks = append(out.Blocks, ref)
+		}
+	}
+	return out
 }
 
 type Comment struct {
@@ -154,6 +190,8 @@ func IssueFromListRow(r db.ListIssuesRow) Issue {
 		ProjectID:    nullableUID(r.ProjectID),
 		ProjectName:  nullableText(r.ProjectName),
 		CycleID:      nullableUID(r.CycleID),
+		ParentID:     nullableUID(r.ParentID),
+		Blocked:      r.Blocked,
 		CreatedAt:    ts(r.CreatedAt).Format(TimeFormat),
 		UpdatedAt:    ts(r.UpdatedAt).Format(TimeFormat),
 	}
@@ -176,6 +214,8 @@ func IssueFromGetRow(r db.GetIssueRow) Issue {
 		ProjectID:    nullableUID(r.ProjectID),
 		ProjectName:  nullableText(r.ProjectName),
 		CycleID:      nullableUID(r.CycleID),
+		ParentID:     nullableUID(r.ParentID),
+		Blocked:      r.Blocked,
 		CreatedAt:    ts(r.CreatedAt).Format(TimeFormat),
 		UpdatedAt:    ts(r.UpdatedAt).Format(TimeFormat),
 	}

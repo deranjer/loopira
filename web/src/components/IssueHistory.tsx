@@ -13,6 +13,8 @@ const FIELD_LABELS: Record<string, string> = {
   project: 'Project',
   cycle: 'Cycle',
   label: 'Label',
+  parent: 'Parent issue',
+  blockedBy: 'Blocked by',
 }
 
 function formatValue(

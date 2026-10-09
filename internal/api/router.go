@@ -76,6 +76,7 @@ func New(pool *pgxpool.Pool, hub *ws.Hub, store storage.Store) *Server {
 	s.registerWorkLogRoutes()
 	s.registerCycleRoutes()
 	s.registerIssueRoutes()
+	s.registerIssueLinkRoutes()
 	s.registerAPIKeyRoutes()
 	s.registerViewRoutes()
 	s.registerTemplateFragmentRoutes()
