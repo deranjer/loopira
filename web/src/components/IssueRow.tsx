@@ -29,7 +29,7 @@ export function IssueRow({ issue, onClick }: { issue: Issue; onClick: () => void
       >
         {issue.title}
       </Text>
-      {issue.blocked && (
+      {issue.blocked && issue.status !== 'blocked' && (
         <Badge size="md" variant="light" radius="sm" color="red" styles={{ root: { textTransform: 'none' } }}>
           Blocked
         </Badge>

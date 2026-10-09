@@ -84,7 +84,7 @@ func (s *toolServer) resolveIssue(ctx context.Context, teamID pgtype.UUID, ref s
 }
 
 type listIssuesArgs struct {
-	Status     string `json:"status,omitempty" jsonschema:"filter by status: backlog, todo, in_progress, done, or canceled"`
+	Status     string `json:"status,omitempty" jsonschema:"filter by status: backlog, todo, in_progress, blocked, done, or canceled"`
 	ProjectID  string `json:"projectId,omitempty" jsonschema:"filter by project id, from list_projects"`
 	CycleID    string `json:"cycleId,omitempty" jsonschema:"filter by cycle id, from list_cycles"`
 	AssigneeID string `json:"assigneeId,omitempty" jsonschema:"filter by assignee id, from list_users, or 'me' for the current user"`
@@ -480,11 +480,11 @@ func (s *toolServer) createIssue(ctx context.Context, _ *mcp.CallToolRequest, ar
 
 type updateIssueStatusArgs struct {
 	ID     string `json:"id" jsonschema:"issue id or identifier"`
-	Status string `json:"status" jsonschema:"backlog, todo, in_progress, done, or canceled"`
+	Status string `json:"status" jsonschema:"backlog, todo, in_progress, blocked, done, or canceled"`
 }
 
 var validStatuses = map[string]bool{
-	"backlog": true, "todo": true, "in_progress": true, "done": true, "canceled": true,
+	"backlog": true, "todo": true, "in_progress": true, "blocked": true, "done": true, "canceled": true,
 }
 
 func (s *toolServer) updateIssueStatus(ctx context.Context, _ *mcp.CallToolRequest, args updateIssueStatusArgs) (*mcp.CallToolResult, dto.Issue, error) {
